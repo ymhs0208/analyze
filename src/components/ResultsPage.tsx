@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   ArrowLeft,
@@ -110,6 +110,31 @@ export default function ResultsPage() {
   const schools = results?.eligibleSchools || [];
   const regionName = getRegionName(formData.region);
 
+  useEffect(() => {
+    if (!payload || !results) return;
+
+    const confirmLeave = '您正在離開分析結果頁，確定要離開嗎？';
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    const handlePopState = () => {
+      if (window.confirm(confirmLeave)) return;
+      window.history.pushState(null, '', window.location.href);
+    };
+
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [payload, results]);
+
   const filteredSchools = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
@@ -179,22 +204,22 @@ export default function ResultsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900">
-      <section className="border-b-4 border-slate-900 bg-slate-950 text-white">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-slate-50 pb-16 text-slate-900">
+      <section className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
+        <div className="rounded-[2rem] border-4 border-slate-900 bg-white p-5 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] sm:p-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <a href={withBasePath('/')} className="mb-5 inline-flex items-center gap-2 text-sm font-black text-emerald-200 hover:text-white">
+              <a href={withBasePath('/')} className="mb-5 inline-flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-slate-100 px-3 py-2 text-sm font-black text-slate-700 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:bg-amber-100">
                 <ArrowLeft className="h-4 w-4" />
-                回到分析頁
+                返回分析頁
               </a>
               <div className="flex items-center gap-3">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl border-4 border-white bg-indigo-500 shadow-[4px_4px_0px_0px_rgba(16,185,129,1)]">
+                <div className="flex h-14 w-14 -rotate-3 items-center justify-center rounded-2xl border-4 border-slate-900 bg-indigo-500 text-white shadow-[4px_4px_0px_0px_rgba(251,191,36,1)]">
                   <Award className="h-7 w-7" />
                 </div>
                 <div>
                   <h1 className="text-3xl font-black tracking-tight sm:text-4xl">落點分析結果</h1>
-                  <p className="mt-1 text-sm font-bold text-slate-300">
+                  <p className="mt-1 text-sm font-bold text-slate-500">
                     {regionName} · {payload.createdAt ? new Date(payload.createdAt).toLocaleString('zh-TW') : '剛剛建立'}
                   </p>
                 </div>
@@ -205,7 +230,7 @@ export default function ResultsPage() {
               <button
                 type="button"
                 onClick={() => exportExcel(exportPayload, regionName)}
-                className="inline-flex items-center gap-2 rounded-xl border-2 border-white bg-white px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-emerald-100"
+                className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] transition hover:bg-emerald-100"
               >
                 <FileSpreadsheet className="h-4 w-4" />
                 Excel
@@ -213,7 +238,7 @@ export default function ResultsPage() {
               <button
                 type="button"
                 onClick={() => exportTxt(exportPayload, regionName)}
-                className="inline-flex items-center gap-2 rounded-xl border-2 border-white bg-slate-800 px-4 py-3 text-sm font-black text-white transition hover:bg-slate-700"
+                className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-slate-100 px-4 py-3 text-sm font-black text-slate-700 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] transition hover:bg-slate-200"
               >
                 <Download className="h-4 w-4" />
                 TXT
@@ -221,7 +246,7 @@ export default function ResultsPage() {
               <button
                 type="button"
                 onClick={() => exportJson(exportPayload)}
-                className="inline-flex items-center gap-2 rounded-xl border-2 border-white bg-white/10 px-4 py-3 text-sm font-black text-white transition hover:bg-white/20"
+                className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-indigo-50 px-4 py-3 text-sm font-black text-indigo-700 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] transition hover:bg-indigo-100"
               >
                 <Download className="h-4 w-4" />
                 JSON
@@ -229,7 +254,7 @@ export default function ResultsPage() {
               <button
                 type="button"
                 onClick={() => printResults(exportPayload, regionName)}
-                className="inline-flex items-center gap-2 rounded-xl border-2 border-amber-300 bg-amber-300 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-200"
+                className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-amber-300 px-4 py-3 text-sm font-black text-slate-950 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] transition hover:bg-amber-200"
               >
                 <Printer className="h-4 w-4" />
                 列印
@@ -304,11 +329,13 @@ export default function ResultsPage() {
 
         <section className="space-y-6">
           {results.analysisReport && (
-            <div className="rounded-3xl border-4 border-slate-900 bg-white shadow-[8px_8px_0px_0px_rgba(15,23,42,1)]">
-              <div className="border-b-4 border-slate-900 bg-indigo-500 p-5 text-white">
+            <div className="overflow-hidden rounded-[2rem] border-4 border-slate-900 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)]">
+              <div className="border-b-4 border-slate-900 bg-white/70 p-5 text-slate-900">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
-                    <Sparkles className="h-6 w-6 text-amber-200" />
+                    <div className="flex h-12 w-12 -rotate-3 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white text-indigo-600 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]">
+                      <Sparkles className="h-6 w-6" />
+                    </div>
                     <h2 className="text-2xl font-black">AI 策略摘要</h2>
                   </div>
                   <button
