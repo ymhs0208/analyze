@@ -583,6 +583,9 @@ function SchoolCard({
   const meta = zoneMeta[school.zone] || zoneMeta.target;
   const ZoneIcon = meta.icon;
   const ownership = formatSchoolOwnership(school.ownership || 'public');
+  const ownershipColor = getSchoolOwnershipKey(school.ownership) === 'private'
+    ? 'bg-purple-100 text-purple-800 border-purple-300'
+    : 'bg-sky-100 text-sky-800 border-sky-300';
   const OwnershipIcon = getSchoolOwnershipKey(school.ownership) === 'private' ? Building2 : Library;
   const threshold = school.minScore || school.points || school.score || '--';
   const distance = school.scoreDiff ?? school.pointsDiff ?? school.distanceScore;
@@ -613,19 +616,39 @@ function SchoolCard({
         </div>
       </div>
 
-      <div className="relative z-10 mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <MiniStat label="類型" value={school.type || '普通'} />
-        <MiniStat label="科群" value={school.group || '一般'} />
-        <MiniStat label="地區" value={regionName} />
-        <MiniStat label="門檻" value={threshold} />
+      <div className="relative z-10 mt-5 flex flex-wrap items-stretch gap-2">
+        {school.meetsMinRequirements === false && (
+          <InfoTag label="門檻提醒" value="未達最低要求" className="bg-red-100 text-red-800 border-red-300" />
+        )}
+        {school.zone && (
+          <InfoTag
+            label="落點區間"
+            value={meta.label}
+            icon={<ZoneIcon className="h-3.5 w-3.5" />}
+            className={school.zone === 'reach'
+              ? 'bg-rose-100 text-rose-800 border-rose-300'
+              : school.zone === 'target'
+                ? 'bg-sky-100 text-sky-800 border-sky-300'
+                : 'bg-emerald-100 text-emerald-800 border-emerald-300'}
+          />
+        )}
+        <InfoTag label="屬性" value={ownership} icon={<OwnershipIcon className="h-3.5 w-3.5" />} className={ownershipColor} />
+        <InfoTag label="類型" value={school.type || '普通科'} className="bg-emerald-100 text-emerald-800 border-emerald-300" />
+        {school.group && <InfoTag label="科群" value={school.group} className="bg-amber-100 text-amber-800 border-amber-300" />}
+        <InfoTag label="地區" value={regionName} className="bg-white text-slate-700 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]" />
       </div>
 
       {(school.analysisNote || distance !== undefined) && (
-        <div className={`relative z-10 mt-4 rounded-2xl border-2 p-3 ${meta.card}`}>
-          <div className="text-xs font-black text-slate-500">落點說明</div>
+        <div className="relative z-10 mt-4 rounded-xl border-2 border-slate-200 bg-slate-50 px-3 py-2">
+          <div className="mb-1 text-[10px] font-black text-slate-500">落點分析</div>
           <p className="mt-1 text-sm font-bold leading-relaxed text-slate-700">
             {school.analysisNote || `與參考門檻差距：${distance > 0 ? '+' : ''}${distance}`}
           </p>
+          {school.creditDiff !== null && school.creditDiff !== undefined && school.scoreDiff === 0 && (
+            <div className="mt-1 text-[11px] font-bold text-emerald-700">
+              積點差距 {school.creditDiff > 0 ? '+' : ''}{school.creditDiff}
+            </div>
+          )}
         </div>
       )}
 
@@ -658,7 +681,7 @@ function SchoolCard({
           className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-emerald-50 px-3 py-2.5 text-sm font-black text-emerald-700 transition hover:bg-emerald-100"
         >
           <MapPin className="h-4 w-4" />
-          地圖
+          學校地圖
           <ExternalLink className="h-3.5 w-3.5" />
         </a>
         <button
@@ -669,18 +692,31 @@ function SchoolCard({
           }`}
         >
           {isCompared ? <Check className="h-4 w-4" /> : <List className="h-4 w-4" />}
-          {isCompared ? '已加入' : '加入比較'}
+          {isCompared ? '已加入比較' : '加入比較'}
         </button>
       </div>
     </article>
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: React.ReactNode }) {
+function InfoTag({
+  label,
+  value,
+  className,
+  icon,
+}: {
+  label: string;
+  value: React.ReactNode;
+  className: string;
+  icon?: React.ReactNode;
+}) {
   return (
-    <div className="min-w-0 rounded-2xl border-2 border-slate-200 bg-slate-50 p-3">
-      <div className="text-[11px] font-black text-slate-500">{label}</div>
-      <div className="mt-1 truncate text-sm font-black text-slate-900">{value}</div>
+    <div className={`flex min-w-[70px] flex-1 flex-col items-center justify-center rounded-xl border-2 px-3 py-1.5 ${className}`}>
+      <span className="mb-0.5 whitespace-nowrap text-[10px] font-black uppercase opacity-70">{label}</span>
+      <div className="flex max-w-full items-center gap-1 truncate whitespace-nowrap text-sm font-black">
+        {icon}
+        <span className="truncate">{value}</span>
+      </div>
     </div>
   );
 }
