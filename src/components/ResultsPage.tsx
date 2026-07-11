@@ -11,6 +11,7 @@ import {
   FileSpreadsheet,
   Flame,
   GraduationCap,
+  History,
   Library,
   List,
   MapPin,
@@ -19,10 +20,12 @@ import {
   ShieldCheck,
   Sparkles,
   Target,
+  X,
 } from 'lucide-react';
 import ComparisonModal from './ComparisonModal';
+import StrategyModal from './StrategyModal';
 import { ALL_REGIONS } from './RegionModal';
-import { exportExcel, exportTxt, printResults } from '../lib/exportUtils';
+import { exportExcel, exportJson, exportTxt, printResults } from '../lib/exportUtils';
 import { formatSchoolOwnership, getSchoolOwnershipKey } from '../lib/schoolDisplay';
 import { loadAdmissionResult } from '../lib/resultStorage';
 import { withBasePath } from '../lib/routes';
@@ -65,6 +68,19 @@ const gradeLabels: Record<string, string> = {
   composition: '作文',
 };
 
+const normalizeHistoricalScores = (scores: any[] = []) =>
+  scores
+    .filter((item) => item && item.points !== null && item.points !== undefined)
+    .map((item) => ({
+      ...item,
+      year: String(item.year || '歷年'),
+      numericYear: Number.parseInt(String(item.year || '').replace(/\D/g, ''), 10),
+    }))
+    .sort((a, b) => (Number.isFinite(b.numericYear) ? b.numericYear : 0) - (Number.isFinite(a.numericYear) ? a.numericYear : 0));
+
+const formatHistoricalCredits = (credits: any) =>
+  credits !== null && credits !== undefined && credits !== '' ? credits : '--';
+
 const getRegionName = (regionId: string) =>
   ALL_REGIONS.find((region) => region.id === regionId)?.name || regionId || '未選擇';
 
@@ -86,6 +102,8 @@ export default function ResultsPage() {
   const [type, setType] = useState('all');
   const [comparisonSchools, setComparisonSchools] = useState<any[]>([]);
   const [isComparisonOpen, setIsComparisonOpen] = useState(false);
+  const [isStrategyOpen, setIsStrategyOpen] = useState(false);
+  const [historicalSchool, setHistoricalSchool] = useState<any | null>(null);
 
   const results = payload?.results;
   const formData = payload?.formData || {};
@@ -202,6 +220,14 @@ export default function ResultsPage() {
               </button>
               <button
                 type="button"
+                onClick={() => exportJson(exportPayload)}
+                className="inline-flex items-center gap-2 rounded-xl border-2 border-white bg-white/10 px-4 py-3 text-sm font-black text-white transition hover:bg-white/20"
+              >
+                <Download className="h-4 w-4" />
+                JSON
+              </button>
+              <button
+                type="button"
                 onClick={() => printResults(exportPayload, regionName)}
                 className="inline-flex items-center gap-2 rounded-xl border-2 border-amber-300 bg-amber-300 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-200"
               >
@@ -280,9 +306,19 @@ export default function ResultsPage() {
           {results.analysisReport && (
             <div className="rounded-3xl border-4 border-slate-900 bg-white shadow-[8px_8px_0px_0px_rgba(15,23,42,1)]">
               <div className="border-b-4 border-slate-900 bg-indigo-500 p-5 text-white">
-                <div className="flex items-center gap-3">
-                  <Sparkles className="h-6 w-6 text-amber-200" />
-                  <h2 className="text-2xl font-black">AI 策略摘要</h2>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="h-6 w-6 text-amber-200" />
+                    <h2 className="text-2xl font-black">AI 策略摘要</h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsStrategyOpen(true)}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-amber-300 px-4 py-2.5 text-sm font-black text-slate-900 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] transition hover:bg-amber-200"
+                  >
+                    <Target className="h-4 w-4" />
+                    策略說明
+                  </button>
                 </div>
               </div>
               <div className="grid gap-4 p-5 lg:grid-cols-[1fr_0.85fr]">
@@ -353,6 +389,7 @@ export default function ResultsPage() {
                   regionName={school.district || regionName}
                   isCompared={comparisonSchools.some((item) => item.name === school.name)}
                   onToggleCompare={() => toggleComparison(school)}
+                  onOpenHistory={() => setHistoricalSchool(school)}
                 />
               ))}
             </div>
@@ -384,7 +421,72 @@ export default function ResultsPage() {
         onRemove={(name) => setComparisonSchools((current) => current.filter((school) => school.name !== name))}
         onClear={() => setComparisonSchools([])}
       />
+      <StrategyModal isOpen={isStrategyOpen} onClose={() => setIsStrategyOpen(false)} />
+      <HistoricalScoresModal school={historicalSchool} onClose={() => setHistoricalSchool(null)} />
     </main>
+  );
+}
+
+function HistoricalScoresModal({ school, onClose }: { school: any | null; onClose: () => void }) {
+  if (!school) return null;
+
+  const scores = normalizeHistoricalScores(school.historicalScores || []).slice(0, 8);
+
+  return (
+    <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="historical-scores-title"
+        className="relative flex max-h-[88vh] w-full max-w-xl flex-col overflow-hidden rounded-[2rem] border-4 border-slate-900 bg-white shadow-[10px_10px_0px_0px_rgba(15,23,42,1)]"
+      >
+        <div className="flex items-start justify-between gap-4 border-b-4 border-slate-900 bg-amber-300 p-5">
+          <div className="min-w-0">
+            <div className="text-xs font-black text-amber-900">歷年錄取參考</div>
+            <h2 id="historical-scores-title" className="break-words text-2xl font-black leading-tight text-slate-900">
+              {school.name}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="關閉歷年成績"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-900 bg-white shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="custom-scrollbar overflow-y-auto bg-slate-50 p-5">
+          {scores.length > 0 ? (
+            <div className="space-y-3">
+              {scores.map((item: any) => (
+                <div
+                  key={`${item.year}-${item.points}-${item.credits ?? 'none'}`}
+                  className="flex items-center justify-between gap-4 rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]"
+                >
+                  <div>
+                    <div className="text-lg font-black text-slate-900">{item.year}</div>
+                    <div className="text-xs font-bold text-slate-500">錄取參考資料</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xl font-black text-indigo-600">分數 {item.points ?? '--'}</div>
+                    <div className="text-sm font-black text-emerald-700">積點 {formatHistoricalCredits(item.credits)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-white p-8 text-center">
+              <History className="mx-auto h-10 w-10 text-slate-300" />
+              <div className="mt-3 text-xl font-black text-slate-900">尚無歷年成績資料</div>
+              <p className="mt-2 text-sm font-bold text-slate-500">若資料來源更新，這裡會顯示歷年分數與積點。</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -441,6 +543,7 @@ function SchoolCard({
   regionName,
   isCompared,
   onToggleCompare,
+  onOpenHistory,
 }: {
   key?: React.Key;
   school: any;
@@ -448,6 +551,7 @@ function SchoolCard({
   regionName: string;
   isCompared: boolean;
   onToggleCompare: () => void;
+  onOpenHistory: () => void;
 }) {
   const meta = zoneMeta[school.zone] || zoneMeta.target;
   const ZoneIcon = meta.icon;
@@ -455,6 +559,8 @@ function SchoolCard({
   const OwnershipIcon = getSchoolOwnershipKey(school.ownership) === 'private' ? Building2 : Library;
   const threshold = school.minScore || school.points || school.score || '--';
   const distance = school.scoreDiff ?? school.pointsDiff ?? school.distanceScore;
+  const historicalScores = normalizeHistoricalScores(school.historicalScores || []);
+  const latestHistoricalScore = historicalScores[0];
 
   return (
     <article className="relative overflow-hidden rounded-3xl border-4 border-slate-900 bg-white p-5 shadow-[6px_6px_0px_0px_rgba(15,23,42,1)] transition hover:-translate-y-1 hover:shadow-[9px_9px_0px_0px_rgba(15,23,42,1)]">
@@ -495,6 +601,27 @@ function SchoolCard({
           </p>
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={onOpenHistory}
+        className="relative z-10 mt-4 flex w-full items-center justify-between gap-3 rounded-2xl border-2 border-slate-900 bg-amber-50 px-3 py-3 text-left shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] transition hover:-translate-y-0.5 hover:bg-amber-100"
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-900 bg-white">
+            <History className="h-4 w-4 text-amber-700" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-xs font-black text-slate-500">歷年成績</span>
+            <span className="block truncate text-sm font-black text-slate-900">
+              {latestHistoricalScore
+                ? `${latestHistoricalScore.year} 分數 ${latestHistoricalScore.points} / 積點 ${formatHistoricalCredits(latestHistoricalScore.credits)}`
+                : '尚無歷年成績資料'}
+            </span>
+          </span>
+        </span>
+        <span className="text-xs font-black text-amber-700">查看</span>
+      </button>
 
       <div className="relative z-10 mt-4 flex gap-2">
         <a
