@@ -488,30 +488,30 @@ export default function ResultsPage() {
                           <h4 className="font-black text-xl text-slate-900 leading-tight">{school.name}</h4>
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-stretch gap-2.5">
+                      <div className="grid grid-cols-4 items-stretch gap-2">
                         {school.zone && (
-                          <div className={`flex flex-col items-center justify-center px-3 py-2 rounded-xl border-2 ${school.zone === 'reach' ? 'bg-rose-100 text-rose-800 border-rose-300' : school.zone === 'target' ? 'bg-sky-100 text-sky-800 border-sky-300' : 'bg-emerald-100 text-emerald-800 border-emerald-300'} flex-1 min-w-[76px]`}>
+                          <div className={`flex min-w-0 flex-col items-center justify-center px-2.5 py-2.5 rounded-xl border-2 ${school.zone === 'reach' ? 'bg-rose-100 text-rose-800 border-rose-300' : school.zone === 'target' ? 'bg-sky-100 text-sky-800 border-sky-300' : 'bg-emerald-100 text-emerald-800 border-emerald-300'}`}>
                             <span className="text-[10px] font-black uppercase opacity-70 mb-0.5 whitespace-nowrap">落點區間</span>
-                            <div className="flex items-center gap-1 font-black text-sm whitespace-nowrap">
+                            <div className="text-center text-sm font-black leading-tight">
                               {school.zone === 'reach' ? '夢幻區' : school.zone === 'target' ? '落點區' : '安全區'}
                             </div>
                           </div>
                         )}
-                        <div className={`flex flex-col items-center justify-center px-3 py-2 rounded-xl border-2 ${ownershipColor} flex-1 min-w-[76px]`}>
+                        <div className={`flex min-w-0 flex-col items-center justify-center px-2.5 py-2.5 rounded-xl border-2 ${ownershipColor}`}>
                           <span className="text-[10px] font-black uppercase opacity-70 mb-0.5 whitespace-nowrap">屬性</span>
-                          <div className="flex items-center gap-1 font-black text-sm whitespace-nowrap">
+                          <div className="flex min-w-0 items-center justify-center gap-1 text-center text-sm font-black leading-tight">
                             <OwnershipIcon className="w-3.5 h-3.5" /> {ownership}
                           </div>
                         </div>
-                        <div className="flex flex-col items-center justify-center px-3 py-2 rounded-xl border-2 bg-emerald-100 text-emerald-800 border-emerald-300 flex-1 min-w-[76px]">
-                          <span className="text-[10px] font-black uppercase opacity-70 mb-0.5 whitespace-nowrap">類科</span>
-                          <div className="flex items-center gap-1 font-black text-sm whitespace-nowrap">
-                            {school.type || '普通科'}
+                        <div className="flex min-w-0 flex-col items-center justify-center rounded-xl border-2 border-emerald-300 bg-emerald-100 px-2.5 py-2.5 text-emerald-800">
+                          <span className="text-[10px] font-black uppercase opacity-70 mb-0.5 whitespace-nowrap">群別</span>
+                          <div className="text-center text-sm font-black leading-tight">
+                            {school.group || school.type || '普通科'}
                           </div>
                         </div>
-                        <div className="flex flex-col items-center justify-center px-3 py-2 rounded-xl border-2 border-slate-900 bg-white shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] flex-1 min-w-[76px]">
+                        <div className="flex min-w-0 flex-col items-center justify-center rounded-xl border-2 border-slate-900 bg-white px-2.5 py-2.5 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]">
                           <span className="text-[10px] font-black uppercase text-slate-500 mb-0.5 whitespace-nowrap">地區</span>
-                          <div className="font-black flex items-baseline gap-0.5 whitespace-nowrap text-sm">
+                          <div className="text-center text-sm font-black leading-tight">
                             <span className="text-slate-700">{schoolDistrictName}</span>
                           </div>
                         </div>
