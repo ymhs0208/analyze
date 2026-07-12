@@ -1,10 +1,12 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import {
   ArrowLeft,
+  ArrowUp,
   Award,
   Building2,
   Calculator,
   Check,
+  Database,
   Download,
   ExternalLink,
   FileText,
@@ -20,6 +22,7 @@ import {
   ShieldCheck,
   Sparkles,
   Target,
+  X,
 } from 'lucide-react';
 import ExportModal from './ExportModal';
 import ComparisonModal from './ComparisonModal';
@@ -42,6 +45,11 @@ const normalizeHistoricalScores = (scores: any[] = []) =>
     }))
     .sort((a, b) => (Number.isFinite(b.numericYear) ? b.numericYear : 0) - (Number.isFinite(a.numericYear) ? a.numericYear : 0));
 
+const historicalScoresPendingText = '資料整理中';
+
+const formatHistoricalCredits = (credits: any) =>
+  credits !== null && credits !== undefined && credits !== '' ? credits : '無';
+
 const getHistoricalTrend = (scores: any[]) => {
   const [latest, previous] = scores;
   if (!latest || !previous || !Number.isFinite(latest.numericPoints) || !Number.isFinite(previous.numericPoints)) {
@@ -58,6 +66,102 @@ const zoneMeta: Record<string, { label: string; icon: React.ElementType; tone: s
   target: { label: '落點區', icon: Target, tone: 'text-sky-700 bg-sky-50 border-sky-200', badge: 'bg-sky-500' },
   safe: { label: '安全區', icon: ShieldCheck, tone: 'text-emerald-700 bg-emerald-50 border-emerald-200', badge: 'bg-emerald-500' },
 };
+
+const scoreItems = [
+  { key: 'chinese', label: '國文' },
+  { key: 'english', label: '英文' },
+  { key: 'math', label: '數學' },
+  { key: 'science', label: '自然' },
+  { key: 'social', label: '社會' },
+  { key: 'composition', label: '作文' },
+];
+
+function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClose: () => void }) {
+  if (!school) return null;
+
+  const scores = normalizeHistoricalScores(school.historicalScores || []).slice(0, 6);
+  const latest = scores[0];
+  const trend = getHistoricalTrend(scores);
+  const maxPoint = Math.max(...scores.map((item: any) => Number(item.points) || 0), 1);
+
+  return (
+    <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+        aria-label="關閉歷年錄取成績"
+        onClick={onClose}
+      />
+      <section className="relative flex max-h-[88vh] w-full max-w-xl flex-col overflow-hidden rounded-[2rem] border-4 border-slate-900 bg-white shadow-[10px_10px_0px_0px_rgba(15,23,42,1)]">
+        <header className="flex items-start justify-between gap-4 border-b-4 border-slate-900 bg-amber-300 p-5 sm:p-6">
+          <div className="min-w-0">
+            <div className="text-xs font-black text-amber-900">歷年錄取資料</div>
+            <h2 className="mt-1 break-words text-xl font-black leading-tight text-slate-900 sm:text-2xl">{school.name}</h2>
+            <span className={`mt-3 inline-flex rounded-lg border px-2.5 py-1 text-xs font-black ${scores.length > 0 ? trend.tone : 'border-slate-200 bg-slate-100 text-slate-500'}`}>
+              {scores.length > 0 ? trend.label : historicalScoresPendingText}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-4 border-slate-900 bg-white shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] transition-all hover:bg-slate-100 active:translate-y-0.5 active:shadow-none"
+            aria-label="關閉"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </header>
+
+        <div className="overflow-y-auto bg-slate-50 p-5 sm:p-6">
+          {scores.length === 0 ? (
+            <div className="rounded-2xl border-2 border-dashed border-amber-300 bg-white p-8 text-center">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-slate-900 bg-amber-100 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]">
+                <Database className="h-7 w-7 text-amber-700" />
+              </div>
+              <div className="text-xl font-black text-slate-900">{historicalScoresPendingText}</div>
+              <p className="mt-2 text-sm font-bold text-slate-500">目前尚未提供此校科的歷年錄取分數。</p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]">
+                  <div className="text-[11px] font-black text-slate-500">{latest?.year || '--'} 積分</div>
+                  <div className="mt-1 text-4xl font-black leading-none text-slate-900">{latest?.points ?? '--'}</div>
+                </div>
+                <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]">
+                  <div className="text-[11px] font-black text-slate-500">{latest?.year || '--'} 積點</div>
+                  <div className="mt-1 text-4xl font-black leading-none text-slate-900">{formatHistoricalCredits(latest?.credits)}</div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="font-black text-slate-900">歷年分數趨勢</div>
+                  <div className="text-[11px] font-bold text-slate-500">積分 / 積點</div>
+                </div>
+                <div className="space-y-3">
+                  {scores.map((item: any) => {
+                    const width = `${Math.max(14, Math.round(((Number(item.points) || 0) / maxPoint) * 100))}%`;
+                    return (
+                      <div key={`${item.year}-${item.points}-${item.credits ?? 'none'}`} className="grid grid-cols-[48px_1fr_auto] items-center gap-3">
+                        <div className="text-sm font-black text-slate-500">{item.year}</div>
+                        <div className="h-4 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+                          <div className="h-full rounded-full bg-gradient-to-r from-amber-300 via-sky-300 to-indigo-400" style={{ width }} />
+                        </div>
+                        <div className="whitespace-nowrap text-xs font-black text-slate-800 sm:text-sm">
+                          {item.points ?? '--'} / {formatHistoricalCredits(item.credits)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
 
 export default function ResultsPage() {
   const stored = useMemo(() => {
@@ -76,6 +180,19 @@ export default function ResultsPage() {
   const [comparisonSchools, setComparisonSchools] = useState<any[]>([]);
   const [isComparisonOpen, setIsComparisonOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [historicalScoreSchool, setHistoricalScoreSchool] = useState<any | null>(null);
+
+  React.useEffect(() => {
+    if (!stored?.results) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [stored]);
 
   if (!stored?.results) {
     return (
@@ -255,6 +372,21 @@ export default function ResultsPage() {
           <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
             <div className="rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)]">
               <div className="mb-4 flex items-center gap-2 text-sm font-black text-slate-500">
+                <Award className="h-4 w-4" />
+                本次成績
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {scoreItems.map((item) => (
+                  <div key={item.key} className="rounded-xl border-2 border-slate-200 bg-slate-50 px-3 py-2.5">
+                    <div className="text-[11px] font-black text-slate-500">{item.label}</div>
+                    <div className="mt-1 text-lg font-black text-slate-900">{scores?.[item.key] || '未填'}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)]">
+              <div className="mb-4 flex items-center gap-2 text-sm font-black text-slate-500">
                 <Filter className="h-4 w-4" />
                 本次條件
               </div>
@@ -331,99 +463,141 @@ export default function ResultsPage() {
                 目前篩選條件下沒有符合的學校。
               </div>
             ) : (
-              <div className="grid gap-4 xl:grid-cols-2">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pb-4">
                 {filteredSchools.map((school: any, index: number) => {
                   const meta = zoneMeta[school.zone] || zoneMeta.target;
                   const ZoneIcon = meta.icon;
                   const ownership = formatSchoolOwnership(school.ownership || 'public');
-                  const OwnershipIcon = getSchoolOwnershipKey(school.ownership) === 'private' ? Building2 : Library;
-                  const historicalScores = normalizeHistoricalScores(school.historicalScores || []).slice(0, 2);
+                  const ownershipKey = getSchoolOwnershipKey(school.ownership);
+                  const ownershipColor = ownershipKey === 'private' ? 'bg-purple-100 text-purple-800 border-purple-300' : 'bg-sky-100 text-sky-800 border-sky-300';
+                  const OwnershipIcon = ownershipKey === 'private' ? Building2 : Library;
+                  const historicalScores = normalizeHistoricalScores(school.historicalScores || []).slice(0, 4);
                   const latestHistoricalScore = historicalScores[0];
                   const historicalTrend = getHistoricalTrend(historicalScores);
                   const isCompared = comparisonSchools.some((item) => item.name === school.name);
                   const schoolDistrictName = school.district || ALL_REGIONS.find((region) => region.id === (school.region || scores?.region))?.name || school.region || regionName;
 
                   return (
-                    <article key={`${school.name}-${index}`} className="flex min-h-full flex-col rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]">
+                    <article key={`${school.name}-${index}`} className={`relative p-5 rounded-2xl border-2 transition-all group overflow-hidden flex flex-col gap-4 h-full ${isCompared ? 'bg-indigo-50 border-indigo-500 shadow-[4px_4px_0px_0px_rgba(99,102,241,1)]' : 'bg-white border-slate-900 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(15,23,42,1)]'}`}>
+                      <div className={`absolute -right-2 -bottom-4 text-8xl font-black opacity-[0.03] select-none pointer-events-none transition-opacity group-hover:opacity-10 ${index < 3 ? 'text-amber-600' : 'text-slate-900'}`}>{index + 1}</div>
                       <div className="flex items-start gap-4">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-900 bg-amber-200 text-lg font-black shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]">
+                        <div className={`w-12 h-12 shrink-0 rounded-2xl border-2 border-slate-900 flex items-center justify-center font-black text-lg shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] ${index < 3 ? 'bg-gradient-to-br from-amber-200 to-amber-400 text-amber-900' : 'bg-slate-100 text-slate-700'}`}>
                           {index + 1}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h3 className="break-words text-xl font-black leading-tight">{school.name}</h3>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-black ${meta.tone}`}>
-                              <ZoneIcon className="h-3.5 w-3.5" />
-                              {meta.label}
-                            </span>
-                            <span className="inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50 px-2 py-1 text-xs font-black text-sky-700">
-                              <OwnershipIcon className="h-3.5 w-3.5" />
-                              {ownership}
-                            </span>
-                            <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-700">
-                              {school.type || '普通科'}
-                            </span>
-                            {school.group && (
-                              <span className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-black text-amber-700">
-                                {school.group}
-                              </span>
-                            )}
+                          <h4 className="font-black text-xl text-slate-900 leading-tight">{school.name}</h4>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-stretch gap-2.5">
+                        {school.zone && (
+                          <div className={`flex flex-col items-center justify-center px-3 py-2 rounded-xl border-2 ${school.zone === 'reach' ? 'bg-rose-100 text-rose-800 border-rose-300' : school.zone === 'target' ? 'bg-sky-100 text-sky-800 border-sky-300' : 'bg-emerald-100 text-emerald-800 border-emerald-300'} flex-1 min-w-[76px]`}>
+                            <span className="text-[10px] font-black uppercase opacity-70 mb-0.5 whitespace-nowrap">落點區間</span>
+                            <div className="flex items-center gap-1 font-black text-sm whitespace-nowrap">
+                              {school.zone === 'reach' ? '夢幻區' : school.zone === 'target' ? '落點區' : '安全區'}
+                            </div>
+                          </div>
+                        )}
+                        <div className={`flex flex-col items-center justify-center px-3 py-2 rounded-xl border-2 ${ownershipColor} flex-1 min-w-[76px]`}>
+                          <span className="text-[10px] font-black uppercase opacity-70 mb-0.5 whitespace-nowrap">屬性</span>
+                          <div className="flex items-center gap-1 font-black text-sm whitespace-nowrap">
+                            <OwnershipIcon className="w-3.5 h-3.5" /> {ownership}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-center justify-center px-3 py-2 rounded-xl border-2 bg-emerald-100 text-emerald-800 border-emerald-300 flex-1 min-w-[76px]">
+                          <span className="text-[10px] font-black uppercase opacity-70 mb-0.5 whitespace-nowrap">類科</span>
+                          <div className="flex items-center gap-1 font-black text-sm whitespace-nowrap">
+                            {school.type || '普通科'}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-center justify-center px-3 py-2 rounded-xl border-2 border-slate-900 bg-white shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] flex-1 min-w-[76px]">
+                          <span className="text-[10px] font-black uppercase text-slate-500 mb-0.5 whitespace-nowrap">地區</span>
+                          <div className="font-black flex items-baseline gap-0.5 whitespace-nowrap text-sm">
+                            <span className="text-slate-700">{schoolDistrictName}</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                          <div className="text-xs font-black text-slate-500">地區</div>
-                          <div className="mt-1 font-black">{schoolDistrictName}</div>
-                        </div>
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                          <div className="text-xs font-black text-slate-500">歷年分數</div>
-                          <div className="mt-1 font-black">
-                            {latestHistoricalScore ? `${latestHistoricalScore.year}：${latestHistoricalScore.points}` : '資料整理中'}
-                          </div>
-                        </div>
-                      </div>
 
                       {school.analysisNote && (
-                        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                          <div className="text-xs font-black text-slate-500">分析備註</div>
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+                          <div className="text-xs font-black text-slate-500">落點判讀</div>
                           <p className="mt-1 text-sm font-bold leading-relaxed text-slate-700">{school.analysisNote}</p>
                           {school.creditDiff !== null && school.creditDiff !== undefined && school.scoreDiff === 0 && (
                             <p className="mt-1 text-xs font-black text-emerald-700">
-                              積點差距 {school.creditDiff > 0 ? '+' : ''}{school.creditDiff}
+                              同分積點差 {school.creditDiff > 0 ? '+' : ''}{school.creditDiff}
                             </p>
                           )}
                         </div>
                       )}
 
-                      <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <History className="h-4 w-4 shrink-0 text-amber-700" />
-                          <span className={`rounded-lg border px-2 py-1 text-xs font-black ${historicalTrend.tone}`}>{historicalTrend.label}</span>
+                      <button
+                        type="button"
+                        onClick={() => setHistoricalScoreSchool(school)}
+                        className={`rounded-2xl border-2 border-slate-900 px-3.5 py-3.5 text-left shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] active:translate-y-0 active:shadow-none transition-all ${historicalScores.length > 0 ? 'bg-amber-50' : 'bg-slate-50'}`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-9 h-9 rounded-xl border-2 border-slate-900 bg-white flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(15,23,42,1)] shrink-0">
+                              {historicalScores.length > 0 ? (
+                                <History className="w-4 h-4 text-amber-700" />
+                              ) : (
+                                <Database className="w-4 h-4 text-slate-500" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs font-black text-slate-900">歷年錄取成績</div>
+                              <div className="text-[11px] font-bold text-slate-600 truncate">
+                                {historicalScores.length > 0 ? (
+                                  <>
+                                    最新 {latestHistoricalScore?.year || '--'} 積分 {latestHistoricalScore?.points ?? '--'}
+                                    {` / 積點 ${formatHistoricalCredits(latestHistoricalScore?.credits)}`}
+                                  </>
+                                ) : (
+                                  historicalScoresPendingText
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            {historicalScores.length > 0 ? (
+                              <span className={`rounded-lg border px-2 py-0.5 text-[10px] font-black ${historicalTrend.tone}`}>
+                                {historicalTrend.label}
+                              </span>
+                            ) : (
+                              <span className="rounded-lg border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-500">
+                                資料整理中
+                              </span>
+                            )}
+                            <span className="text-[10px] font-black text-amber-700">查看詳情</span>
+                          </div>
                         </div>
+                      </button>
+
+                      <div className="flex gap-2.5">
                         <a
                           href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(school.name)}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex shrink-0 items-center gap-1 text-xs font-black text-slate-600 hover:text-slate-900"
+                          onClick={(event) => event.stopPropagation()}
+                          className="flex-[2] py-2.5 px-2 rounded-xl border-2 border-slate-900 font-bold text-sm flex items-center justify-center gap-1.5 transition-all bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none"
                         >
-                          <MapPin className="h-4 w-4" />
-                          地圖
-                          <ExternalLink className="h-3 w-3" />
+                          <MapPin className="w-4 h-4" /> 學校地圖
                         </a>
+                        <button
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleComparison(school);
+                          }}
+                          className={`flex-[3] py-2.5 px-2 rounded-xl border-2 border-slate-900 font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                            isCompared
+                              ? 'bg-indigo-600 text-white shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:bg-indigo-500'
+                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none'
+                          }`}
+                        >
+                          {isCompared ? <Check className="w-4 h-4" /> : <List className="w-4 h-4" />}
+                          {isCompared ? '已加入比較' : '加入比較'}
+                        </button>
                       </div>
-
-                      <button
-                        type="button"
-                        onClick={() => toggleComparison(school)}
-                        className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-900 px-4 py-2.5 text-sm font-black shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] ${
-                          isCompared ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-800'
-                        }`}
-                      >
-                        {isCompared ? <Check className="h-4 w-4" /> : <List className="h-4 w-4" />}
-                        {isCompared ? '已加入比較' : '加入比較'}
-                      </button>
                     </article>
                   );
                 })}
@@ -435,7 +609,18 @@ export default function ResultsPage() {
 
       <Footer />
 
+      <button
+        type="button"
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-slate-900 bg-amber-300 text-slate-900 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] transition-all hover:-translate-y-0.5 hover:bg-amber-200 hover:shadow-[5px_5px_0px_0px_rgba(15,23,42,1)] active:translate-y-0 active:shadow-none"
+        aria-label="回到頁面最上方"
+        title="回到頁面最上方"
+      >
+        <ArrowUp className="h-6 w-6" />
+      </button>
+
       <ExportModal isOpen={isExportOpen} onClose={() => setIsExportOpen(false)} onExport={handleExport} />
+      <HistoricalScoresDialog school={historicalScoreSchool} onClose={() => setHistoricalScoreSchool(null)} />
       <ComparisonModal
         schools={comparisonSchools}
         isOpen={isComparisonOpen}
