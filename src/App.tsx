@@ -28,13 +28,14 @@ import DataProviderModal from './components/DataProviderModal';
 import AppHeader from './components/layout/AppHeader';
 import Footer from './components/layout/Footer';
 import HeroBanner from './components/layout/HeroBanner';
+import NavigationDrawer from './components/layout/NavigationDrawer';
 import { formatSchoolOwnership, getSchoolOwnershipKey } from './lib/schoolDisplay';
 import { withBasePath } from './lib/routes';
+import { preloadResultsPage } from './lib/pagePreload';
 
 const HollandTestModal = React.lazy(() => import('./components/HollandTestModal'));
 const MockVolunteerModal = React.lazy(() => import('./components/MockVolunteerModal'));
 const HistoricalStatsModal = React.lazy(() => import('./components/HistoricalStatsModal'));
-const NavigationDrawer = React.lazy(() => import('./components/layout/NavigationDrawer'));
 
 const DISCLAIMER_SEEN_KEY = 'tw-admission-disclaimer-seen';
 const RESULTS_STORAGE_KEY = 'tw-admission-analysis-results';
@@ -299,6 +300,10 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
       setActiveModal('validationFailed');
       return;
     }
+
+    // Start downloading the results-page bundle while the analysis/auth request is in progress.
+    // This makes the route ready as soon as the backend returns the analysis data.
+    void preloadResultsPage();
     
     setErrorMessage('');
 
@@ -374,10 +379,11 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
       );
       setResults(data);
       setStatus('success');
-      window.location.href = withBasePath('/results');
-      
-      // Delay status change to allow Quantum overlay to finish
-      // QuantumLoadingOverlay handles it internally calling onComplete which will set status to success
+      // Use the static-hosting route directly to avoid a /results -> 404 -> app redirect.
+      // A full navigation is retained so the results page keeps its normal ad-loading lifecycle.
+      const resultsUrl = new URL(withBasePath('/'), window.location.origin);
+      resultsUrl.searchParams.set('route', '/results');
+      window.location.href = resultsUrl.toString();
     } catch (e: unknown) {
       setStatus('error');
       if (isBackendError(e) && e.code === 'INVALID_INVITATION_CODE') {
@@ -1454,10 +1460,10 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
       </AnimatePresence>
 
       {/* Modals Rendering */}
-      <QRCodeModal 
-        isOpen={activeModal === 'qrcode'} 
-        onClose={() => setActiveModal(null)} 
-        onScan={(code) => { updateForm('invitationCode', code); setActiveModal(null); }} 
+      <QRCodeModal
+        isOpen={activeModal === 'qrcode'}
+        onClose={() => setActiveModal(null)}
+        onScan={(code) => { updateForm('invitationCode', code); setActiveModal(null); }}
       />
       
       {activeModal === 'mockVolunteer' && (
@@ -1655,7 +1661,7 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
         onClose={() => setActiveModal(null)}
       />
 
-      <SharePlatformModal 
+      <SharePlatformModal
         isOpen={activeModal === 'sharePlatform'}
         onClose={() => setActiveModal(null)}
       />
@@ -1666,9 +1672,7 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
       />
 
       {isNavMenuOpen && (
-        <React.Suspense fallback={null}>
-          <NavigationDrawer isOpen onClose={() => setIsNavMenuOpen(false)} setActiveModal={setActiveModal} />
-        </React.Suspense>
+        <NavigationDrawer isOpen onClose={() => setIsNavMenuOpen(false)} setActiveModal={setActiveModal} />
       )}
 
       {/* Navigation Drawer */}
