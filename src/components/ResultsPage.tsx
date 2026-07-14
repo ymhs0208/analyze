@@ -411,15 +411,40 @@ export default function ResultsPage() {
               <div className="space-y-3 text-sm font-bold">
                 <div className="flex justify-between gap-3"><span className="text-slate-500">學校屬性</span><span>{ownershipLabel}</span></div>
                 <div className="flex justify-between gap-3"><span className="text-slate-500">學校類型</span><span>{schoolTypeLabel}</span></div>
-                {vocationalGroups.length > 0 && !(vocationalGroups.length === 1 && vocationalGroups[0] === 'all') && (
-                  <div>
-                    <div className="mb-2 text-slate-500">職群</div>
-                    <div className="flex flex-wrap gap-1">
-                      {vocationalGroups.map((group: string) => (
-                        <span key={group} className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-700">{group}</span>
-                      ))}
+                {scores?.schoolType === '職業類科' && (
+                  <section className="overflow-hidden rounded-2xl border-2 border-slate-900 bg-gradient-to-br from-emerald-50 via-white to-teal-50 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]">
+                    <div className="flex items-center justify-between gap-3 border-b-2 border-slate-900 bg-emerald-200/70 px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-xl border-2 border-slate-900 bg-white shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]">
+                          <Layers className="h-4 w-4 text-emerald-700" />
+                        </span>
+                        <div>
+                          <div className="text-xs font-black text-slate-900">職群篩選</div>
+                          <div className="text-[11px] font-bold text-emerald-800">依你的興趣方向推薦</div>
+                        </div>
+                      </div>
+                      <span className="shrink-0 rounded-full border-2 border-slate-900 bg-slate-900 px-2 py-1 text-[11px] font-black text-white">
+                        {vocationalGroups.length === 1 && vocationalGroups[0] === 'all' ? '不限制' : `${vocationalGroups.length} 個`}
+                      </span>
                     </div>
-                  </div>
+                    <div className="p-3">
+                      {vocationalGroups.length === 1 && vocationalGroups[0] === 'all' ? (
+                        <div className="flex items-center gap-2 rounded-xl border-2 border-dashed border-emerald-300 bg-white/80 px-3 py-2 text-xs font-black text-emerald-800">
+                          <Sparkles className="h-4 w-4 shrink-0" />
+                          全部職群皆納入分析，保留最多探索彈性。
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          {vocationalGroups.map((group: string, index: number) => (
+                            <div key={group} className="flex min-w-0 items-center gap-2 rounded-xl border-2 border-emerald-200 bg-white px-2.5 py-2 shadow-sm">
+                              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-emerald-600 text-[10px] font-black text-white">{index + 1}</span>
+                              <span className="truncate text-xs font-black text-emerald-800">{group}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </section>
                 )}
               </div>
             </div>
