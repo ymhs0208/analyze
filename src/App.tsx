@@ -8,15 +8,12 @@ import {
   Target, Lightbulb, Flame, ShieldCheck, Layers, Brain, Copyright, Database, Instagram, AtSign, Languages
 } from 'lucide-react';
 import VocationalModal from './components/VocationalModal';
-import HollandTestModal from './components/HollandTestModal';
 import { InfoModal } from './components/InfoModals';
 import DisclaimerModal from './components/DisclaimerModal';
 import ComparisonModal from './components/ComparisonModal';
 import QRCodeModal from './components/QRCodeModal';
-import MockVolunteerModal from './components/MockVolunteerModal';
 import CyberAuthOverlay from './components/CyberAuthOverlay';
 import QuantumLoadingOverlay from './components/QuantumLoadingOverlay';
-import { exportTxt, exportExcel, exportJson, printResults } from './lib/exportUtils';
 import { callBackend, isBackendError, normalizeInvitationCode } from './lib/api';
 import RegionModal, { ALL_REGIONS } from './components/RegionModal';
 import ExportModal from './components/ExportModal';
@@ -25,16 +22,19 @@ import RegionScoringModal, { REGION_SCORING_DATA } from './components/RegionScor
 import SharePlatformModal from './components/SharePlatformModal';
 import RatingModal from './components/RatingModal';
 import ReportErrorModal from './components/ReportErrorModal';
-import HistoricalStatsModal from './components/HistoricalStatsModal';
 import ScoreInquiryModal from './components/ScoreInquiryModal';
 import DataProviderModal from './components/DataProviderModal';
 // Layout Components
 import AppHeader from './components/layout/AppHeader';
 import Footer from './components/layout/Footer';
 import HeroBanner from './components/layout/HeroBanner';
-import NavigationDrawer from './components/layout/NavigationDrawer';
 import { formatSchoolOwnership, getSchoolOwnershipKey } from './lib/schoolDisplay';
 import { withBasePath } from './lib/routes';
+
+const HollandTestModal = React.lazy(() => import('./components/HollandTestModal'));
+const MockVolunteerModal = React.lazy(() => import('./components/MockVolunteerModal'));
+const HistoricalStatsModal = React.lazy(() => import('./components/HistoricalStatsModal'));
+const NavigationDrawer = React.lazy(() => import('./components/layout/NavigationDrawer'));
 
 const DISCLAIMER_SEEN_KEY = 'tw-admission-disclaimer-seen';
 const RESULTS_STORAGE_KEY = 'tw-admission-analysis-results';
@@ -406,10 +406,11 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
     });
   };
 
-  const handleExport = (type: 'txt' | 'excel' | 'json' | 'print') => {
+  const handleExport = async (type: 'txt' | 'excel' | 'json' | 'print') => {
     if (!results) return;
     const regionName = ALL_REGIONS.find(r => r.id === formData.region)?.name || '未選擇';
     const payload = { scores: formData, results, identity: formData.identity, vocationalGroups };
+    const { exportTxt, exportExcel, exportJson, printResults } = await import('./lib/exportUtils');
     switch (type) {
       case 'txt': exportTxt(payload, regionName); break;
       case 'excel': exportExcel(payload, regionName); break;
@@ -433,7 +434,7 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
         isMenuOpen={isNavMenuOpen}
       />
 
-      <main id="main-content" className="max-w-6xl mx-auto px-4 mt-32 sm:mt-40 space-y-8 relative z-10">
+      <main id="main-content" aria-label="主要內容" className="max-w-6xl mx-auto px-4 mt-32 sm:mt-40 space-y-8 relative z-10">
         
         <HeroBanner onDataProviderClick={() => setActiveModal('dataProvider')} />
 
@@ -1459,11 +1460,11 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
         onScan={(code) => { updateForm('invitationCode', code); setActiveModal(null); }} 
       />
       
-      <MockVolunteerModal
-        isOpen={activeModal === 'mockVolunteer'}
-        onClose={() => setActiveModal(null)}
-        region={formData.region}
-      />
+      {activeModal === 'mockVolunteer' && (
+        <React.Suspense fallback={null}>
+          <MockVolunteerModal isOpen onClose={() => setActiveModal(null)} region={formData.region} />
+        </React.Suspense>
+      )}
 
       <VocationalModal 
         isOpen={isVocationalOpen} 
@@ -1473,6 +1474,8 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
         onOpenHollandTest={() => { window.location.href = withBasePath('/holland'); }}
       />
 
+      {isHollandTestOpen && (
+        <React.Suspense fallback={null}>
       <HollandTestModal 
         isOpen={isHollandTestOpen}
         onClose={() => setIsHollandTestOpen(false)}
@@ -1486,6 +1489,8 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
           window.location.href = withBasePath('/vocational-encyclopedia');
         }}
       />
+        </React.Suspense>
+      )}
 
       <RegionModal 
         isOpen={isRegionOpen} 
@@ -1634,10 +1639,11 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
         </div>
       </InfoModal>
 
-      <HistoricalStatsModal 
-        isOpen={activeModal === 'historicalStats'}
-        onClose={() => setActiveModal(null)}
-      />
+      {activeModal === 'historicalStats' && (
+        <React.Suspense fallback={null}>
+          <HistoricalStatsModal isOpen onClose={() => setActiveModal(null)} />
+        </React.Suspense>
+      )}
 
       <ScoreInquiryModal 
         isOpen={activeModal === 'scoreInquiry'}
@@ -1659,11 +1665,11 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
         onClose={() => setActiveModal(null)}
       />
 
-      <NavigationDrawer
-        isOpen={isNavMenuOpen}
-        onClose={() => setIsNavMenuOpen(false)}
-        setActiveModal={setActiveModal}
-      />
+      {isNavMenuOpen && (
+        <React.Suspense fallback={null}>
+          <NavigationDrawer isOpen onClose={() => setIsNavMenuOpen(false)} setActiveModal={setActiveModal} />
+        </React.Suspense>
+      )}
 
       {/* Navigation Drawer */}
       <AnimatePresence>
