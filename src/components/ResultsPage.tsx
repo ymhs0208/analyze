@@ -155,22 +155,44 @@ function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClo
                     const point = Number(item.points);
                     const previousPoint = Number(scores[index + 1]?.points);
                     const hasPrevious = Number.isFinite(point) && Number.isFinite(previousPoint);
-                    const difference = hasPrevious ? Math.round((point - previousPoint) * 10) / 10 : null;
+                    const credit = Number(item.credits);
+                    const previousCredit = Number(scores[index + 1]?.credits);
+                    const hasCreditsComparison = Number.isFinite(credit) && Number.isFinite(previousCredit);
+                    const pointDifference = hasPrevious ? Math.round((point - previousPoint) * 10) / 10 : null;
+                    const creditDifference = hasCreditsComparison ? Math.round((credit - previousCredit) * 10) / 10 : null;
+                    let comparisonLabel: string | null = null;
+                    let comparisonDifference: number | null = null;
+
+                    if (pointDifference !== null) {
+                      if (pointDifference !== 0) {
+                        comparisonDifference = pointDifference;
+                        comparisonLabel = `較前一年積分 ${pointDifference > 0 ? '+' : ''}${pointDifference}`;
+                      } else if (creditDifference !== null && creditDifference !== 0) {
+                        comparisonDifference = creditDifference;
+                        comparisonLabel = `較前一年積點 ${creditDifference > 0 ? '+' : ''}${creditDifference}`;
+                      } else if (creditDifference === 0) {
+                        comparisonDifference = 0;
+                        comparisonLabel = '較前一年不變';
+                      } else {
+                        comparisonLabel = '積分與前一年相同';
+                      }
+                    }
+
                     const relativePercent = Math.max(0, Math.round(((point || 0) / maxPoint) * 100));
                     const width = `${relativePercent}%`;
                     const isLatest = index === 0;
-                    const differenceTone = difference === null
+                    const differenceTone = comparisonDifference === null
                       ? 'bg-slate-100 text-slate-500'
-                      : difference > 0
+                      : comparisonDifference > 0
                         ? 'bg-rose-100 text-rose-700'
-                        : difference < 0
+                        : comparisonDifference < 0
                           ? 'bg-emerald-100 text-emerald-700'
                           : 'bg-sky-100 text-sky-700';
-                    const barTone = difference === null
-                      ? 'bg-indigo-400'
-                      : difference > 0
+                    const barTone = comparisonDifference === null
+                      ? 'bg-slate-400'
+                      : comparisonDifference > 0
                         ? 'bg-rose-400'
-                        : difference < 0
+                        : comparisonDifference < 0
                           ? 'bg-emerald-400'
                           : 'bg-sky-400';
 
@@ -196,12 +218,12 @@ function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClo
                             </div>
                           </div>
                         </div>
-                        {(item.note || difference !== null) && (
+                        {(item.note || comparisonLabel) && (
                           <div className="mt-2 flex items-center justify-between gap-3 border-t border-dashed border-slate-200 pt-2">
                             <p className="min-w-0 text-xs font-bold leading-relaxed text-slate-600">
                               {item.note && <><span className="mr-1 font-black text-slate-800">備註：</span>{item.note}</>}
                             </p>
-                            {difference !== null && <span className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-black ${differenceTone}`}>{difference === 0 ? '較前一年不變' : `較前一年 ${difference > 0 ? '+' : ''}${difference}`}</span>}
+                            {comparisonLabel && <span className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-black ${differenceTone}`}>{comparisonLabel}</span>}
                           </div>
                         )}
                       </div>
