@@ -145,7 +145,7 @@ function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClo
                     </div>
                     <div>
                       <div className="font-black text-slate-900">歷年分數趨勢</div>
-                      <p className="mt-0.5 text-[11px] font-bold text-slate-500">由新至舊，快速比較每年門檻</p>
+                      <p className="mt-0.5 text-[11px] font-bold text-slate-500">長度為相對最高積分；色彩表示與前一年變動</p>
                     </div>
                   </div>
                 </div>
@@ -156,7 +156,8 @@ function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClo
                     const previousPoint = Number(scores[index + 1]?.points);
                     const hasPrevious = Number.isFinite(point) && Number.isFinite(previousPoint);
                     const difference = hasPrevious ? Math.round((point - previousPoint) * 10) / 10 : null;
-                    const width = `${Math.max(14, Math.round(((point || 0) / maxPoint) * 100))}%`;
+                    const relativePercent = Math.max(0, Math.round(((point || 0) / maxPoint) * 100));
+                    const width = `${relativePercent}%`;
                     const isLatest = index === 0;
                     const differenceTone = difference === null
                       ? 'bg-slate-100 text-slate-500'
@@ -165,6 +166,13 @@ function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClo
                         : difference < 0
                           ? 'bg-emerald-100 text-emerald-700'
                           : 'bg-sky-100 text-sky-700';
+                    const barTone = difference === null
+                      ? 'bg-indigo-400'
+                      : difference > 0
+                        ? 'bg-rose-400'
+                        : difference < 0
+                          ? 'bg-emerald-400'
+                          : 'bg-sky-400';
 
                     return (
                       <div key={`${item.year}-${item.points}-${item.credits ?? 'none'}-${item.note ?? ''}`} className={`rounded-xl border-2 p-3 ${isLatest ? 'border-amber-400 bg-amber-50' : 'border-slate-200 bg-slate-50'}`}>
@@ -180,8 +188,11 @@ function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClo
                               </div>
                               <span className="text-xs font-black text-slate-600">積點 {formatHistoricalCredits(item.credits)}</span>
                             </div>
-                            <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-200">
-                              <div className="h-full rounded-full bg-gradient-to-r from-amber-300 via-sky-300 to-indigo-400" style={{ width }} />
+                            <div className="mt-2 flex items-center gap-2" aria-label={`${item.year} 年積分相對最高積分為 ${relativePercent}%`}>
+                              <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-200">
+                                <div className={`h-full rounded-full ${barTone}`} style={{ width }} />
+                              </div>
+                              <span className="w-8 text-right text-[10px] font-black text-slate-500">{relativePercent}%</span>
                             </div>
                           </div>
                         </div>
