@@ -88,76 +88,66 @@ function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClo
   const maxPoint = Math.max(...scores.map((item: any) => Number(item.points) || 0), 1);
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
-      <button
-        type="button"
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-        aria-label="關閉歷年錄取成績"
-        onClick={onClose}
-      />
-      <section className="relative flex max-h-[88vh] w-full max-w-xl flex-col overflow-hidden rounded-[2rem] border-4 border-slate-900 bg-white shadow-[10px_10px_0px_0px_rgba(15,23,42,1)]">
-        <header className="flex items-start justify-between gap-4 border-b-4 border-slate-900 bg-amber-300 p-5 sm:p-6">
-          <div className="min-w-0">
-            <div className="text-xs font-black text-amber-900">歷年錄取資料</div>
-            <h2 className="mt-1 break-words text-xl font-black leading-tight text-slate-900 sm:text-2xl">{school.name}</h2>
-            <span className={`mt-3 inline-flex rounded-lg border px-2.5 py-1 text-xs font-black ${scores.length > 0 ? trend.tone : 'border-slate-200 bg-slate-100 text-slate-500'}`}>
-              {scores.length > 0 ? trend.label : historicalScoresPendingText}
-            </span>
+    <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 sm:p-6">
+      <button type="button" className="absolute inset-0 bg-slate-950/70 backdrop-blur-md" aria-label="關閉歷年錄取成績" onClick={onClose} />
+      <section className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[2rem] border border-white/20 bg-slate-50 shadow-2xl">
+        <header className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-5 pb-7 pt-5 text-white sm:px-7 sm:pt-7">
+          <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-amber-300/20 blur-2xl" />
+          <div className="absolute -bottom-20 left-1/3 h-40 w-40 rounded-full bg-sky-400/20 blur-2xl" />
+          <div className="relative flex items-start justify-between gap-4">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/10 shadow-lg">
+                <History className="h-6 w-6 text-amber-300" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-black tracking-[0.2em] text-amber-300">HISTORICAL RECORDS</p>
+                <h2 className="mt-1 break-words text-xl font-black leading-tight sm:text-2xl">{school.name}</h2>
+                <span className={`mt-3 inline-flex rounded-full border px-3 py-1 text-xs font-black ${scores.length > 0 ? trend.tone : 'border-slate-200 bg-slate-100 text-slate-500'}`}>
+                  {scores.length > 0 ? trend.label : historicalScoresPendingText}
+                </span>
+              </div>
+            </div>
+            <button type="button" onClick={onClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white/10 transition hover:bg-white/20" aria-label="關閉">
+              <X className="h-5 w-5" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-4 border-slate-900 bg-white shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] transition-all hover:bg-slate-100 active:translate-y-0.5 active:shadow-none"
-            aria-label="關閉"
-          >
-            <X className="h-5 w-5" />
-          </button>
         </header>
 
-        <div className="overflow-y-auto bg-slate-50 p-5 sm:p-6">
+        <div className="overflow-y-auto bg-[radial-gradient(circle_at_top,_#eef2ff,_#f8fafc_42%)] p-5 sm:p-7">
           {scores.length === 0 ? (
-            <div className="rounded-2xl border-2 border-dashed border-amber-300 bg-white p-8 text-center">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-slate-900 bg-amber-100 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]">
-                <Database className="h-7 w-7 text-amber-700" />
-              </div>
+            <div className="rounded-3xl border border-dashed border-amber-300 bg-white p-10 text-center shadow-sm">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-100"><Database className="h-8 w-8 text-amber-700" /></div>
               <div className="text-xl font-black text-slate-900">{historicalScoresPendingText}</div>
               <p className="mt-2 text-sm font-bold text-slate-500">目前尚未提供此校科的歷年錄取分數。</p>
             </div>
           ) : (
-            <div className="space-y-5">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]">
-                  <div className="text-[11px] font-black text-slate-500">{latest?.year || '--'} 積分</div>
-                  <div className="mt-1 text-4xl font-black leading-none text-slate-900">{latest?.points ?? '--'}</div>
+            <div className="space-y-6">
+              <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-300 via-amber-200 to-orange-200 p-5 text-slate-900 shadow-[0_12px_28px_rgba(180,83,9,0.18)]">
+                <div className="absolute -right-5 -top-9 text-9xl font-black text-white/25">{latest?.year}</div>
+                <div className="relative flex items-center gap-2 text-xs font-black tracking-[0.16em] text-amber-900"><Award className="h-4 w-4" />最新年度錄取門檻</div>
+                <div className="relative mt-4 grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl bg-white/75 p-4 backdrop-blur-sm"><div className="text-xs font-black text-slate-500">積分</div><div className="mt-1 text-4xl font-black leading-none">{latest?.points ?? '--'}</div></div>
+                  <div className="rounded-2xl bg-slate-900 p-4 text-white shadow-lg"><div className="text-xs font-black text-slate-300">積點</div><div className="mt-1 text-4xl font-black leading-none text-amber-300">{formatHistoricalCredits(latest?.credits)}</div></div>
                 </div>
-                <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]">
-                  <div className="text-[11px] font-black text-slate-500">{latest?.year || '--'} 積點</div>
-                  <div className="mt-1 text-4xl font-black leading-none text-slate-900">{formatHistoricalCredits(latest?.credits)}</div>
-                </div>
-              </div>
+              </section>
 
-              <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div className="font-black text-slate-900">歷年分數趨勢</div>
-                  <div className="text-[11px] font-bold text-slate-500">積分 / 積點</div>
-                </div>
+              <section>
+                <div className="mb-3 flex items-end justify-between gap-3"><div><h3 className="text-lg font-black text-slate-900">歷年錄取趨勢</h3><p className="mt-0.5 text-xs font-bold text-slate-500">由新至舊，最多顯示六個年度</p></div><Layers className="h-5 w-5 text-indigo-500" /></div>
                 <div className="space-y-3">
-                  {scores.map((item: any) => {
-                    const width = `${Math.max(14, Math.round(((Number(item.points) || 0) / maxPoint) * 100))}%`;
+                  {scores.map((item: any, index: number) => {
+                    const width = `${Math.max(12, Math.round(((Number(item.points) || 0) / maxPoint) * 100))}%`;
                     return (
-                      <div key={`${item.year}-${item.points}-${item.credits ?? 'none'}`} className="grid grid-cols-[48px_1fr_auto] items-center gap-3">
-                        <div className="text-sm font-black text-slate-500">{item.year}</div>
-                        <div className="h-4 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
-                          <div className="h-full rounded-full bg-gradient-to-r from-amber-300 via-sky-300 to-indigo-400" style={{ width }} />
+                      <article key={`${item.year}-${item.points}-${item.credits ?? 'none'}-${item.note ?? ''}`} className={`rounded-2xl border p-4 transition ${index === 0 ? 'border-amber-300 bg-amber-50 shadow-sm' : 'border-slate-200 bg-white'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl font-black ${index === 0 ? 'bg-amber-400 text-amber-950' : 'bg-slate-100 text-slate-700'}`}><span className="text-sm leading-none">{item.year}</span><span className="mt-1 text-[9px] uppercase opacity-70">年度</span></div>
+                          <div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-3"><span className="text-sm font-black text-slate-800">積分 {item.points ?? '--'}</span><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">積點 {formatHistoricalCredits(item.credits)}</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full ${index === 0 ? 'bg-gradient-to-r from-amber-400 to-orange-500' : 'bg-gradient-to-r from-sky-400 to-indigo-500'}`} style={{ width }} /></div></div>
                         </div>
-                        <div className="whitespace-nowrap text-xs font-black text-slate-800 sm:text-sm">
-                          {item.points ?? '--'} / {formatHistoricalCredits(item.credits)}
-                        </div>
-                      </div>
+                        {item.note && <p className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs font-bold leading-relaxed text-indigo-950"><span className="mr-1.5 font-black text-indigo-700">備註</span>{item.note}</p>}
+                      </article>
                     );
                   })}
                 </div>
-              </div>
+              </section>
             </div>
           )}
         </div>
