@@ -56,9 +56,19 @@ const getHistoricalTrend = (scores: any[]) => {
     return { label: '資料整理中', tone: 'border-slate-200 bg-slate-100 text-slate-500' };
   }
   const diff = Math.round((latest.numericPoints - previous.numericPoints) * 10) / 10;
-  if (diff > 0) return { label: `較前一年 +${diff}`, tone: 'border-rose-200 bg-rose-50 text-rose-700' };
-  if (diff < 0) return { label: `較前一年 ${diff}`, tone: 'border-emerald-200 bg-emerald-50 text-emerald-700' };
-  return { label: '與前一年相同', tone: 'border-sky-200 bg-sky-50 text-sky-700' };
+  if (diff > 0) return { label: `較前一年積分 +${diff}`, tone: 'border-rose-200 bg-rose-50 text-rose-700' };
+  if (diff < 0) return { label: `較前一年積分 ${diff}`, tone: 'border-emerald-200 bg-emerald-50 text-emerald-700' };
+
+  const latestCredits = Number(latest.credits);
+  const previousCredits = Number(previous.credits);
+  if (!Number.isFinite(latestCredits) || !Number.isFinite(previousCredits)) {
+    return { label: '積分與前一年相同', tone: 'border-slate-200 bg-slate-100 text-slate-600' };
+  }
+
+  const creditDiff = Math.round((latestCredits - previousCredits) * 10) / 10;
+  if (creditDiff > 0) return { label: `較前一年積點 +${creditDiff}`, tone: 'border-rose-200 bg-rose-50 text-rose-700' };
+  if (creditDiff < 0) return { label: `較前一年積點 ${creditDiff}`, tone: 'border-emerald-200 bg-emerald-50 text-emerald-700' };
+  return { label: '較前一年不變', tone: 'border-sky-200 bg-sky-50 text-sky-700' };
 };
 
 const zoneMeta: Record<string, { label: string; icon: React.ElementType; tone: string; badge: string }> = {
@@ -84,7 +94,6 @@ function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClo
 
   const scores = normalizeHistoricalScores(school.historicalScores || []).slice(0, 6);
   const latest = scores[0];
-  const maxPoint = Math.max(...scores.map((item: any) => Number(item.points) || 0), 1);
 
   return (
     <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
@@ -145,7 +154,7 @@ function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClo
                     </div>
                     <div>
                       <div className="font-black text-slate-900">歷年分數趨勢</div>
-                      <p className="mt-0.5 text-[11px] font-bold text-slate-500">長度為相對最高積分；色彩表示與前一年變動</p>
+                      <p className="mt-0.5 text-[11px] font-bold text-slate-500">色彩表示與前一年相比的變動</p>
                     </div>
                   </div>
                 </div>
@@ -178,8 +187,6 @@ function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClo
                       }
                     }
 
-                    const relativePercent = Math.max(0, Math.round(((point || 0) / maxPoint) * 100));
-                    const width = `${relativePercent}%`;
                     const isLatest = index === 0;
                     const differenceTone = comparisonDifference === null
                       ? 'bg-slate-100 text-slate-500'
@@ -210,11 +217,8 @@ function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClo
                               </div>
                               <span className="text-xs font-black text-slate-600">積點 {formatHistoricalCredits(item.credits)}</span>
                             </div>
-                            <div className="mt-2 flex items-center gap-2" aria-label={`${item.year} 年積分相對最高積分為 ${relativePercent}%`}>
-                              <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-200">
-                                <div className={`h-full rounded-full ${barTone}`} style={{ width }} />
-                              </div>
-                              <span className="w-8 text-right text-[10px] font-black text-slate-500">{relativePercent}%</span>
+                            <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-200" aria-label={`${item.year} 年與前一年比較的趨勢`}>
+                              <div className={`h-full w-full rounded-full ${barTone}`} />
                             </div>
                           </div>
                         </div>
