@@ -84,7 +84,6 @@ function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClo
 
   const scores = normalizeHistoricalScores(school.historicalScores || []).slice(0, 6);
   const latest = scores[0];
-  const trend = getHistoricalTrend(scores);
   const maxPoint = Math.max(...scores.map((item: any) => Number(item.points) || 0), 1);
 
   return (
@@ -104,9 +103,6 @@ function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClo
             <div className="min-w-0">
               <div className="text-xs font-black text-amber-900">歷年錄取資料</div>
               <h2 className="mt-1 break-words text-xl font-black leading-tight text-slate-900 sm:text-2xl">{school.name}</h2>
-              <span className={`mt-3 inline-flex rounded-lg border px-2.5 py-1 text-xs font-black ${scores.length > 0 ? trend.tone : 'border-slate-200 bg-slate-100 text-slate-500'}`}>
-                {scores.length > 0 ? trend.label : historicalScoresPendingText}
-              </span>
             </div>
           </div>
           <button
@@ -176,7 +172,6 @@ function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClo
                         <div className="flex items-start gap-3">
                           <div className={`flex min-w-12 flex-col items-center rounded-lg px-2 py-2 text-center ${isLatest ? 'bg-amber-400 text-amber-950' : 'bg-slate-200 text-slate-700'}`}>
                             <span className="text-xs font-black">{item.year}</span>
-                            {isLatest && <span className="mt-0.5 text-[10px] font-black">最新</span>}
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
@@ -186,7 +181,7 @@ function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClo
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className="text-xs font-black text-slate-600">積點 {formatHistoricalCredits(item.credits)}</span>
-                                {difference !== null && <span className={`rounded-md px-2 py-1 text-[10px] font-black ${differenceTone}`}>較前一年 {difference > 0 ? '+' : ''}{difference}</span>}
+                                {difference !== null && <span className={`rounded-md px-2 py-1 text-[10px] font-black ${differenceTone}`}>{difference === 0 ? '較前一年不變' : `較前一年 ${difference > 0 ? '+' : ''}${difference}`}</span>}
                               </div>
                             </div>
                             <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-200">
