@@ -84,7 +84,6 @@ function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClo
 
   const scores = normalizeHistoricalScores(school.historicalScores || []).slice(0, 6);
   const latest = scores[0];
-  const maxPoint = Math.max(...scores.map((item: any) => Number(item.points) || 0), 1);
 
   return (
     <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
@@ -138,7 +137,7 @@ function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClo
               </div>
 
               <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] sm:p-5">
-                <div className="flex items-start justify-between gap-3 border-b-2 border-dashed border-slate-200 pb-4">
+                <div className="border-b-2 border-dashed border-slate-200 pb-4">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-slate-900 bg-amber-100">
                       <History className="h-5 w-5 text-amber-700" strokeWidth={3} />
@@ -148,7 +147,6 @@ function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClo
                       <p className="mt-0.5 text-[11px] font-bold text-slate-500">由新至舊，快速比較每年門檻</p>
                     </div>
                   </div>
-                  <div className="shrink-0 rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-600">積分 / 積點</div>
                 </div>
 
                 <div className="mt-4 space-y-3">
@@ -157,7 +155,6 @@ function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClo
                     const previousPoint = Number(scores[index + 1]?.points);
                     const hasPrevious = Number.isFinite(point) && Number.isFinite(previousPoint);
                     const difference = hasPrevious ? Math.round((point - previousPoint) * 10) / 10 : null;
-                    const width = `${Math.max(14, Math.round(((point || 0) / maxPoint) * 100))}%`;
                     const isLatest = index === 0;
                     const differenceTone = difference === null
                       ? 'bg-slate-100 text-slate-500'
@@ -183,9 +180,6 @@ function HistoricalScoresDialog({ school, onClose }: { school: any | null; onClo
                                 <span className="text-xs font-black text-slate-600">積點 {formatHistoricalCredits(item.credits)}</span>
                                 {difference !== null && <span className={`rounded-md px-2 py-1 text-[10px] font-black ${differenceTone}`}>{difference === 0 ? '較前一年不變' : `較前一年 ${difference > 0 ? '+' : ''}${difference}`}</span>}
                               </div>
-                            </div>
-                            <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-200">
-                              <div className="h-full rounded-full bg-gradient-to-r from-amber-300 via-sky-300 to-indigo-400" style={{ width }} />
                             </div>
                           </div>
                         </div>
