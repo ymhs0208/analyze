@@ -77,6 +77,8 @@ const zoneMeta: Record<string, { label: string; icon: React.ElementType; tone: s
   safe: { label: '保守區', icon: ShieldCheck, tone: 'text-emerald-700 bg-emerald-50 border-emerald-200', badge: 'bg-emerald-500' },
 };
 
+const regionTone = 'border-violet-300 bg-violet-100 text-violet-800';
+
 const scoreItems = [
   { key: 'chinese', label: '國文' },
   { key: 'english', label: '英文' },
@@ -620,10 +622,10 @@ export default function ResultsPage() {
                             {school.group || school.type || '普通科'}
                           </div>
                         </div>
-                        <div className="flex min-w-0 flex-col items-center justify-center rounded-xl border-2 border-slate-900 bg-white px-2.5 py-2.5 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]">
-                          <span className="text-[10px] font-black uppercase text-slate-500 mb-0.5 whitespace-nowrap">地區</span>
+                        <div className={`flex min-w-0 flex-col items-center justify-center rounded-xl border-2 px-2.5 py-2.5 ${regionTone}`}>
+                          <span className="mb-0.5 whitespace-nowrap text-[10px] font-black uppercase opacity-70">地區</span>
                           <div className="text-center text-sm font-black leading-tight">
-                            <span className="text-slate-700">{schoolDistrictName}</span>
+                            <span>{schoolDistrictName}</span>
                           </div>
                         </div>
                       </div>
