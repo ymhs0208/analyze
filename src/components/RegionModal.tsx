@@ -3,13 +3,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, MapPin, Building2, Map, Compass, Anchor, Mountain, Cpu, TreePine, Sun, Sunrise, Waves, Sprout } from 'lucide-react';
 
 export const ALL_REGIONS = [
-  { id: 'taoyuan', name: '桃連區', desc: '130+ 高中', icon: Building2, active: true, color: 'bg-emerald-400' },
-  { id: 'taipei', name: '基北區', desc: '220+ 高中', icon: Map, active: true, color: 'bg-indigo-400' },
-  { id: 'central', name: '中投區', desc: '170+ 高中', icon: Mountain, active: true, color: 'bg-amber-400' },
-  { id: 'changhua', name: '彰化區', desc: '80+ 高中', icon: MapPin, active: true, color: 'bg-rose-400' },
-  { id: 'tainan', name: '台南區', desc: '75+ 高中', icon: Compass, active: true, color: 'bg-sky-400' },
-  { id: 'kaohsiung', name: '高雄區', desc: '90+ 高中', icon: Anchor, active: true, color: 'bg-orange-400' },
-  { id: 'hsinchu', name: '竹苗區', desc: '70+ 高中', icon: Cpu, active: true, color: 'bg-fuchsia-400' },
+  { id: 'taoyuan', name: '桃連區', desc: '130+ 高中職', icon: Building2, active: true, color: 'bg-emerald-400' },
+  { id: 'taipei', name: '基北區', desc: '276+ 高中職', icon: Map, active: true, color: 'bg-indigo-400' },
+  { id: 'central', name: '中投區', desc: '172+ 高中職', icon: Mountain, active: true, color: 'bg-amber-400' },
+  { id: 'changhua', name: '彰化區', desc: '82+ 高中職', icon: MapPin, active: true, color: 'bg-rose-400' },
+  { id: 'tainan', name: '台南區', desc: '119+ 高中職', icon: Compass, active: true, color: 'bg-sky-400' },
+  { id: 'kaohsiung', name: '高雄區', desc: '95+ 高中職', icon: Anchor, active: true, color: 'bg-orange-400' },
+  { id: 'hsinchu', name: '竹苗區', desc: '55+ 高中職', icon: Cpu, active: true, color: 'bg-fuchsia-400' },
   { id: 'yunlin', name: '雲林區', desc: '籌備中', icon: Sprout, active: false, color: 'bg-slate-400' },
   { id: 'chiayi', name: '嘉義區', desc: '籌備中', icon: TreePine, active: false, color: 'bg-slate-400' },
   { id: 'pingtung', name: '屏東區', desc: '籌備中', icon: Sun, active: false, color: 'bg-slate-400' },
@@ -48,7 +48,6 @@ export default function RegionModal({ isOpen, onClose, selectedRegion, onSelect 
                    <h2 className="text-3xl sm:text-4xl font-black text-slate-900 flex items-center gap-3">
                      <MapPin className="w-8 h-8 sm:w-10 sm:h-10" strokeWidth={3} /> 選擇就學區
                    </h2>
-                   <p className="text-amber-900 font-bold mt-2 text-base sm:text-lg">系統將根據您選擇的區域進行大數據精準分析</p>
                  </div>
                  <button onClick={onClose} className="p-2 bg-white/50 hover:bg-white rounded-xl transition-colors border-2 border-transparent hover:border-slate-900 shrink-0">
                    <X className="w-6 h-6 text-slate-900" />
