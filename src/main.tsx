@@ -11,6 +11,7 @@ import { initializeAdvertising } from './lib/membership.ts';
 const App = lazy(() => import('./App.tsx'));
 const AdvantagesPage = lazy(() => import('./components/AdvantagesPage.tsx'));
 const ChangelogPage = lazy(() => import('./components/ChangelogPage.tsx'));
+const CategoryOverviewPage = lazy(() => import('./components/CategoryOverviewPage.tsx'));
 const DisclaimerPage = lazy(() => import('./components/DisclaimerPage.tsx'));
 const FaqGlossaryPage = lazy(() => import('./components/FaqGlossaryPage.tsx'));
 const FiveYearCollegeRulesPage = lazy(() => import('./components/FiveYearCollegeRulesPage.tsx'));
@@ -23,6 +24,7 @@ const ImportantDatesPage = lazy(() => import('./components/ImportantDatesPage.ts
 const InstructionsPage = lazy(() => import('./components/InstructionsPage.tsx'));
 const LegalPage = lazy(() => import('./components/LegalPage.tsx'));
 const LatestNewsPage = lazy(() => import('./components/LatestNewsPage.tsx'));
+const NewsArticlePage = lazy(() => import('./components/NewsArticlePage.tsx'));
 const MockVolunteerPage = lazy(() => import('./components/MockVolunteerPage.tsx'));
 const SearchPage = lazy(() => import('./components/SearchPage.tsx'));
 const ResultsPage = lazy(() => import('./components/ResultsPage.tsx'));
@@ -68,6 +70,7 @@ const path = isAcademicGroupRoute ? '/general-comprehensive-high-school' : rawPa
 if (isAcademicGroupRoute) window.history.replaceState(null, '', withBasePath('/general-comprehensive-high-school'));
 const sharedReportToken = path.match(/^\/shared\/([0-9a-f-]+)$/i)?.[1];
 const scoringRulesRegionId = path.match(/^\/scoring-rules\/([a-z-]+)$/)?.[1];
+const newsArticleId = path.match(/^\/news\/(\d+)$/)?.[1];
 const redirectedRoute = new URLSearchParams(window.location.search).get('route');
 if (redirectedRoute) window.history.replaceState(null, '', withBasePath(path));
 applyPageSeo(path);
@@ -77,6 +80,11 @@ const page =
   path === '/terms' ? <LegalPage kind="terms" /> :
   path === '/advantages' ? <AdvantagesPage /> :
   path === '/changelog' ? <ChangelogPage /> :
+  path === '/guide/find' ? <CategoryOverviewPage categoryId="find" /> :
+  path === '/guide/choose' ? <CategoryOverviewPage categoryId="choose" /> :
+  path === '/guide/plan' ? <CategoryOverviewPage categoryId="plan" /> :
+  path === '/guide/member' ? <CategoryOverviewPage categoryId="member" /> :
+  path === '/guide/help' ? <CategoryOverviewPage categoryId="help" /> :
   path === '/disclaimer' ? <DisclaimerPage /> :
   path === '/faq-glossary' ? <FaqGlossaryPage /> :
   path === '/five-year-college-rules' ? <FiveYearCollegeRulesPage /> :
@@ -92,6 +100,7 @@ const page =
   path === '/site-map' ? <SiteMapPage /> :
   path === '/instructions' ? <InstructionsPage /> :
   path === '/news' ? <LatestNewsPage /> :
+  newsArticleId ? <NewsArticlePage articleId={newsArticleId} /> :
   path === '/holland' ? <HollandPage /> :
   path === '/school-types' ? <SchoolTypesPage /> :
   path === '/strategy' ? <StrategyPage /> :
@@ -113,12 +122,26 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode><AccessibilityEnhancements /><AppErrorBoundary><Suspense fallback={<PageLoading />}>{page}{showRelatedReading && <RelatedReading path={path} />}</Suspense></AppErrorBoundary></StrictMode>,
 );
 
-// Do not compete with the homepage's first paint and form hydration. The
-// verified membership check still runs shortly afterwards, before any ad is
-// eligible to load.
-const startAdvertisingWhenIdle = () => void initializeAdvertising();
-if ('requestIdleCallback' in window) {
-  window.requestIdleCallback(startAdvertisingWhenIdle, { timeout: 1_200 });
+// The homepage is the heaviest first view, so advertising waits for interaction
+// or a short fallback there. Other pages can begin their normal ad check now.
+let advertisingStarted = false;
+const startAdvertising = () => {
+  if (advertisingStarted) return;
+  advertisingStarted = true;
+  window.dispatchEvent(new Event('admission-third-party-ready'));
+  void initializeAdvertising();
+};
+const startAdvertisingAfterInteraction = () => {
+  startAdvertising();
+  window.removeEventListener('pointerdown', startAdvertisingAfterInteraction);
+  window.removeEventListener('keydown', startAdvertisingAfterInteraction);
+  window.removeEventListener('touchstart', startAdvertisingAfterInteraction);
+};
+if (path === '/') {
+  window.addEventListener('pointerdown', startAdvertisingAfterInteraction, { once: true, passive: true });
+  window.addEventListener('keydown', startAdvertisingAfterInteraction, { once: true });
+  window.addEventListener('touchstart', startAdvertisingAfterInteraction, { once: true, passive: true });
+  window.setTimeout(startAdvertising, 5_000);
 } else {
-  window.setTimeout(startAdvertisingWhenIdle, 250);
+  startAdvertising();
 }
