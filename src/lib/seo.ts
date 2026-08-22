@@ -1,5 +1,50 @@
 import { appBasePath } from './routes';
 import { getNewsArticle } from './news';
+import { getAreaBySlug } from '../components/AreaPage';
+
+// Per-region metadata for /scoring-rules/:id pages
+const SCORING_RULES_META: Record<string, { title: string; description: string; cityKeywords: string }> = {
+  taipei: {
+    title: '基北區超額比序計分規則｜臺北市、新北市、基隆市免試入學',
+    description: '整理 115 學年度基北區（臺北市、新北市、基隆市）免試入學超額比序項目：志願序、多元學習表現與國中教育會考積分換算，最高 108 分；正式規則以簡章為準。',
+    cityKeywords: '基北區, 臺北市, 新北市, 基隆市',
+  },
+  taoyuan: {
+    title: '桃連區超額比序計分規則｜桃園市、連江縣免試入學',
+    description: '整理 115 學年度桃連區（桃園市、連江縣）免試入學超額比序項目：適性輔導、多元學習表現與國中教育會考積分換算，合計 100 分；正式規則以簡章為準。',
+    cityKeywords: '桃連區, 桃園市, 連江縣, 馬祖',
+  },
+  hsinchu: {
+    title: '竹苗區超額比序計分規則｜新竹縣市、苗栗縣免試入學',
+    description: '整理 115 學年度竹苗區（新竹縣市、苗栗縣）免試入學超額比序項目：均衡發展、多元學習表現與國中教育會考積分換算，合計 100 分；正式規則以簡章為準。',
+    cityKeywords: '竹苗區, 新竹縣, 新竹市, 苗栗縣',
+  },
+  central: {
+    title: '中投區超額比序計分規則｜臺中市、南投縣免試入學',
+    description: '整理 115 學年度中投區（臺中市、南投縣）免試入學超額比序項目：志願序、多元學習表現、會考成績與扶助弱勢積分換算；正式規則以簡章為準。',
+    cityKeywords: '中投區, 臺中市, 南投縣',
+  },
+  changhua: {
+    title: '彰化區超額比序計分規則｜彰化縣免試入學',
+    description: '整理 115 學年度彰化區（彰化縣）免試入學超額比序項目與積分換算規則，協助國中生規劃會考升學志願；正式規則以官方簡章為準。',
+    cityKeywords: '彰化區, 彰化縣',
+  },
+  chiayi: {
+    title: '嘉義區超額比序計分規則｜嘉義市、嘉義縣免試入學',
+    description: '整理 115 學年度嘉義區（嘉義市、嘉義縣）免試入學超額比序項目與會考積分換算，總分 82 分；正式規則以官方簡章為準。',
+    cityKeywords: '嘉義區, 嘉義市, 嘉義縣',
+  },
+  tainan: {
+    title: '臺南區超額比序計分規則｜臺南市免試入學',
+    description: '整理 115 學年度臺南區（臺南市）免試入學超額比序項目與積分換算規則，協助國中生規劃會考升學志願；正式規則以官方簡章為準。',
+    cityKeywords: '臺南區, 台南區, 臺南市',
+  },
+  kaohsiung: {
+    title: '高雄區超額比序計分規則｜高雄市免試入學',
+    description: '整理 115 學年度高雄區（高雄市）免試入學超額比序項目與積分換算規則，協助國中生規劃會考升學志願；正式規則以官方簡章為準。',
+    cityKeywords: '高雄區, 高雄市',
+  },
+};
 
 const siteUrl = 'https://tyctw.github.io/spare';
 const siteName = '全國會考落點分析';
@@ -149,10 +194,20 @@ const setMetaContent = (selector: string, content: string) => {
 export const applyPageSeo = (path: string) => {
   const newsArticleId = path.match(/^\/news\/(\d+)$/)?.[1];
   const newsArticle = getNewsArticle(newsArticleId);
+  const scoringRulesRegionId = path.match(/^\/scoring-rules\/([a-z-]+)$/)?.[1];
+  const scoringRulesMeta = scoringRulesRegionId ? SCORING_RULES_META[scoringRulesRegionId] : null;
+  const areaSlug = path.match(/^\/area\/([a-z-]+)$/)?.[1];
+  const areaData = areaSlug ? getAreaBySlug(areaSlug) : null;
   const metadata = newsArticle
     ? { title: `${newsArticle.title}｜全國會考落點分析`, description: newsArticle.summary }
+    : scoringRulesMeta
+    ? { title: scoringRulesMeta.title, description: scoringRulesMeta.description }
     : path.startsWith('/scoring-rules/')
     ? { title: '各就學區超額比序計分規則｜全國會考落點分析', description: '整理各就學區免試入學超額比序項目、會考換算與官方簡章入口；正式規則以當學年度公告為準。' }
+    : areaData
+    ? { title: `${areaData.name}會考落點分析｜${areaData.cities}免試入學志願選填`, description: areaData.description }
+    : path.startsWith('/area/')
+    ? { title: '各就學區會考落點分析｜全國會考落點分析', description: '查詢全國 15 個免試入學就學區的會考落點分析與志願選填資訊。' }
     : pageMetadata[path] || pageMetadata['/'];
   const pageUrl = path === '/' ? `${siteUrl}/` : `${siteUrl}${path}`;
   const canonicalUrl = path === '/' ? `${siteUrl}/` : `${siteUrl}${path}`;
@@ -160,6 +215,11 @@ export const applyPageSeo = (path: string) => {
   document.title = metadata.title;
   document.documentElement.lang = 'zh-Hant-TW';
   setMetaContent('meta[name="description"]', metadata.description);
+  if (areaData) {
+    setMetaContent('meta[name="keywords"]', areaData.keywords.join(', '));
+  } else if (scoringRulesMeta && scoringRulesRegionId) {
+    setMetaContent('meta[name="keywords"]', `超額比序, 免試入學, 會考, ${scoringRulesMeta.cityKeywords}, 志願選填, 計分規則`);
+  }
   setMetaContent('meta[name="robots"]', metadata.noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
   setMetaContent('meta[name="googlebot"]', metadata.noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large');
   setMetaContent('meta[property="og:title"]', metadata.title);
@@ -179,6 +239,77 @@ export const applyPageSeo = (path: string) => {
     structuredData.type = 'application/ld+json';
     structuredData.text = JSON.stringify({ '@context': 'https://schema.org', '@type': 'NewsArticle', headline: newsArticle.title, description: newsArticle.summary, datePublished: newsArticle.publishedAt, dateModified: newsArticle.publishedAt, mainEntityOfPage: canonicalUrl, publisher: { '@type': 'Organization', name: siteName, url: siteUrl } });
     document.head.appendChild(structuredData);
+  }
+
+  document.getElementById('scoring-rules-structured-data')?.remove();
+  if (scoringRulesMeta && scoringRulesRegionId) {
+    const regionStructuredData = document.createElement('script');
+    regionStructuredData.id = 'scoring-rules-structured-data';
+    regionStructuredData.type = 'application/ld+json';
+    regionStructuredData.text = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'BreadcrumbList',
+          'itemListElement': [
+            { '@type': 'ListItem', 'position': 1, 'name': '首頁', 'item': `${siteUrl}/` },
+            { '@type': 'ListItem', 'position': 2, 'name': '各區比序規則', 'item': `${siteUrl}/scoring-rules/taipei` },
+            { '@type': 'ListItem', 'position': 3, 'name': scoringRulesMeta.title.split('｜')[0], 'item': canonicalUrl },
+          ],
+        },
+        {
+          '@type': 'WebPage',
+          '@id': `${canonicalUrl}#webpage`,
+          'url': canonicalUrl,
+          'name': scoringRulesMeta.title,
+          'description': scoringRulesMeta.description,
+          'inLanguage': 'zh-Hant-TW',
+          'keywords': `超額比序, 免試入學, 會考, ${scoringRulesMeta.cityKeywords}, 志願選填, 計分規則`,
+          'isPartOf': { '@id': `${siteUrl}/#website` },
+          'publisher': { '@type': 'Organization', 'name': siteName, 'url': `${siteUrl}/` },
+        },
+      ],
+    });
+    document.head.appendChild(regionStructuredData);
+  }
+
+  document.getElementById('area-page-structured-data')?.remove();
+  if (areaData) {
+    const areaStructuredData = document.createElement('script');
+    areaStructuredData.id = 'area-page-structured-data';
+    areaStructuredData.type = 'application/ld+json';
+    areaStructuredData.text = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'BreadcrumbList',
+          'itemListElement': [
+            { '@type': 'ListItem', 'position': 1, 'name': '首頁', 'item': `${siteUrl}/` },
+            { '@type': 'ListItem', 'position': 2, 'name': `${areaData.name}會考落點分析`, 'item': canonicalUrl },
+          ],
+        },
+        {
+          '@type': 'FAQPage',
+          'mainEntity': areaData.faqs.map((faq) => ({
+            '@type': 'Question',
+            'name': faq.q,
+            'acceptedAnswer': { '@type': 'Answer', 'text': faq.a },
+          })),
+        },
+        {
+          '@type': 'WebPage',
+          '@id': `${canonicalUrl}#webpage`,
+          'url': canonicalUrl,
+          'name': `${areaData.name}會考落點分析`,
+          'description': areaData.description,
+          'inLanguage': 'zh-Hant-TW',
+          'keywords': areaData.keywords.join(', '),
+          'isPartOf': { '@id': `${siteUrl}/#website` },
+          'publisher': { '@type': 'Organization', 'name': siteName, 'url': `${siteUrl}/` },
+        },
+      ],
+    });
+    document.head.appendChild(areaStructuredData);
   }
 
   // The app lives below /spare/ on GitHub Pages. This keeps future deployments

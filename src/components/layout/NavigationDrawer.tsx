@@ -3,35 +3,50 @@ import { AnimatePresence, motion } from 'motion/react';
 import {
   AlertCircle,
   ArrowRight,
-  BookOpen,
+  BarChart4,
+  BookOpenText,
   Brain,
+  Briefcase,
   Building2,
-  ChartBar,
+  Calculator,
+  CalendarDays,
   ChevronDown,
   ChevronRight,
-  CalendarDays,
-  Calculator,
-  CircleHelp,
+  Compass,
   Crown,
+  ExternalLink,
+  FileSearch,
   FileText,
-  GraduationCap,
   History,
   Heart,
   Info,
   Instagram,
+  LifeBuoy,
+  Lightbulb,
   Link as LinkIcon,
-  Map,
-  Megaphone,
   ListOrdered,
-  Route,
+  Map,
+  MapPinned,
+  Medal,
+  Megaphone,
+  MessageCircleQuestion,
+  Milestone,
+  MousePointerClick,
+  Network,
+  Scale,
+  School,
   Search,
+  SearchCheck,
   Share2,
-  Shield,
+  ShieldAlert,
   ShieldCheck,
   Sparkles,
   Star,
   Target,
-  X,
+  ThumbsUp,
+  TrendingUp,
+  UserCircle,
+  X
 } from 'lucide-react';
 import { withBasePath } from '../../lib/routes';
 
@@ -82,16 +97,16 @@ export const menuCategories: MenuCategory[] = [
     id: 'find',
     label: '我要查資料',
     description: '找學校、科別、群科與學校類型',
-    icon: Search,
-    color: 'text-sky-500',
-    bg: 'bg-sky-50',
+    icon: Compass,
+    color: 'text-sky-600',
+    bg: 'bg-sky-100',
     accent: 'border-sky-500',
     items: [
-      { id: 'search', label: '搜尋學校與科別', description: '用校名、科別、群別快速查資料', keywords: '搜尋 學校 科別 群別 縣市 代碼', icon: Search, color: 'text-sky-600', bg: 'bg-sky-100', action: { type: 'route', href: '/search' } },
+      { id: 'search', label: '搜尋學校與科別', description: '用校名、科別、群別快速查資料', keywords: '搜尋 學校 科別 群別 縣市 代碼', icon: FileSearch, color: 'text-sky-600', bg: 'bg-sky-100', action: { type: 'route', href: '/search' } },
       { id: 'schoolTypes', label: '學校類型解析', description: '普通科、技高、綜高、五專差在哪', keywords: '學校 類型 普高 技高 綜高 五專 高中 高職', icon: Building2, color: 'text-sky-600', bg: 'bg-sky-100', action: { type: 'route', href: '/school-types' } },
-      { id: 'generalComprehensive', label: '普通科與綜合高中，怎麼選？', description: '比較普通科與綜高學程，找到適合的探索方向', keywords: '普通科 綜合高中 綜高 學程 高中 選擇', icon: GraduationCap, color: 'text-violet-600', bg: 'bg-violet-100', action: { type: 'route', href: '/general-comprehensive-high-school' } },
-      { id: 'grade11Pathways', label: '高二班群怎麼選？', description: '了解自然、社會取向與 18 學群的規劃方式', keywords: '高二 班群 自然組 社會組 數學 A B 18 學群', icon: Route, color: 'text-fuchsia-600', bg: 'bg-fuchsia-100', action: { type: 'route', href: '/grade-11-pathways' } },
-      { id: 'vocational', label: '技職群科百科', description: '看 15 大職群、常見科別與未來進路', keywords: '技職 群科 百科 職群 科別 職涯 高職', icon: BookOpen, color: 'text-emerald-600', bg: 'bg-emerald-100', action: { type: 'route', href: '/vocational-encyclopedia' } },
+      { id: 'generalComprehensive', label: '普通科與綜合高中，怎麼選？', description: '比較普通科與綜高學程，找到適合的探索方向', keywords: '普通科 綜合高中 綜高 學程 高中 選擇', icon: School, color: 'text-sky-600', bg: 'bg-sky-100', action: { type: 'route', href: '/general-comprehensive-high-school' } },
+      { id: 'grade11Pathways', label: '高二班群怎麼選？', description: '了解自然、社會取向與 18 學群的規劃方式', keywords: '高二 班群 自然組 社會組 數學 A B 18 學群', icon: Milestone, color: 'text-sky-600', bg: 'bg-sky-100', action: { type: 'route', href: '/grade-11-pathways' } },
+      { id: 'vocational', label: '技職群科百科', description: '看 15 大職群、常見科別與未來進路', keywords: '技職 群科 百科 職群 科別 職涯 高職', icon: Briefcase, color: 'text-sky-600', bg: 'bg-sky-100', action: { type: 'route', href: '/vocational-encyclopedia' } },
     ],
   },
   {
@@ -99,30 +114,40 @@ export const menuCategories: MenuCategory[] = [
     label: '我要選志願',
     description: '落點分析、志願排序與錄取資料',
     icon: Target,
-    color: 'text-amber-500',
-    bg: 'bg-amber-50',
+    color: 'text-amber-600',
+    bg: 'bg-amber-100',
     accent: 'border-amber-500',
     items: [
-      { id: 'home', label: '落點分析', description: '輸入成績與條件，產生推薦清單', keywords: '首頁 落點 分析 會考 分數', icon: Calculator, color: 'text-orange-600', bg: 'bg-orange-100', action: { type: 'route', href: '/' } },
+      { id: 'home', label: '落點分析', description: '輸入成績與條件，產生推薦清單', keywords: '首頁 落點 分析 會考 分數', icon: Calculator, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/' } },
       { id: 'mockVolunteer', label: '模擬志願序', description: '把校科加入清單，練習排序', keywords: '志願序 模擬 排序 選填', icon: ListOrdered, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/mock-volunteer' } },
-      { id: 'strategy', label: '志願選填攻略', description: '看夢幻、落點、安全區如何搭配', keywords: '志願 選填 策略 建議 攻略', icon: Route, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/strategy' } },
-      { id: 'historicalStats', label: '歷年錄取統計', description: '參考各校歷年分數與趨勢', keywords: '歷年 錄取 分數 統計', icon: ChartBar, color: 'text-indigo-600', bg: 'bg-indigo-100', action: { type: 'route', href: '/historical-stats' } },
-      { id: 'gradeLevel', label: '積分換算說明', description: '查會考等級如何換成積分、積點', keywords: '積分 換算 等級 A B C', icon: Calculator, color: 'text-rose-600', bg: 'bg-rose-100', action: { type: 'route', href: '/grade-level' } },
+      { id: 'strategy', label: '志願選填攻略', description: '看夢幻、落點、安全區如何搭配', keywords: '志願 選填 策略 建議 攻略', icon: Lightbulb, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/strategy' } },
+      { id: 'historicalStats', label: '歷年錄取統計', description: '參考各校歷年分數與趨勢', keywords: '歷年 錄取 分數 統計', icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/historical-stats' } },
+      { id: 'gradeLevel', label: '積分換算說明', description: '查會考等級如何換成積分、積點', keywords: '積分 換算 等級 A B C', icon: Scale, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/grade-level' } },
+      { id: 'scoringTaipei', label: '基北區計分規則', description: '基隆、臺北、新北的超額比序與會考換算', keywords: '基北 基隆 台北 臺北 新北 計分 規則 超額比序', icon: MapPinned, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/scoring-rules/taipei' } },
+      { id: 'scoringTaoyuan', label: '桃連區計分規則', description: '桃園、連江的超額比序與會考換算', keywords: '桃連 桃園 連江 計分 規則 超額比序', icon: MapPinned, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/scoring-rules/taoyuan' } },
+      { id: 'scoringCentral', label: '中投區計分規則', description: '臺中、南投的超額比序與會考換算', keywords: '中投 台中 臺中 南投 計分 規則 超額比序', icon: MapPinned, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/scoring-rules/central' } },
+      { id: 'scoringChanghua', label: '彰化區計分規則', description: '彰化的超額比序與會考換算', keywords: '彰化 計分 規則 超額比序', icon: MapPinned, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/scoring-rules/changhua' } },
+      { id: 'scoringChiayi', label: '嘉義區計分規則', description: '嘉義市、嘉義縣的超額比序與會考換算', keywords: '嘉義 嘉義市 嘉義縣 計分 規則 超額比序', icon: MapPinned, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/scoring-rules/chiayi' } },
+      { id: 'scoringTainan', label: '臺南區計分規則', description: '臺南的超額比序與會考換算', keywords: '台南 臺南 計分 規則 超額比序', icon: MapPinned, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/scoring-rules/tainan' } },
+      { id: 'scoringKaohsiung', label: '高雄區計分規則', description: '高雄的超額比序與會考換算', keywords: '高雄 計分 規則 超額比序', icon: MapPinned, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/scoring-rules/kaohsiung' } },
+      { id: 'scoringHsinchu', label: '竹苗區計分規則', description: '新竹、苗栗的超額比序與會考換算', keywords: '竹苗 新竹 苗栗 計分 規則 超額比序', icon: MapPinned, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/scoring-rules/hsinchu' } },
+      { id: 'fiveYearCollegeRules', label: '五專優先免試計分規則', description: '查看五專積分項目與同分比序參考', keywords: '五專 優先免試 聯合免試 積分 志願序 比序', icon: Medal, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/five-year-college-rules' } },
     ],
   },
   {
     id: 'plan',
     label: '我要規劃升學',
     description: '興趣探索、時程與官方相關資源',
-    icon: CalendarDays,
-    color: 'text-indigo-500',
-    bg: 'bg-indigo-50',
+    icon: Map,
+    color: 'text-indigo-600',
+    bg: 'bg-indigo-100',
     accent: 'border-indigo-500',
     items: [
-      { id: 'holland', label: 'Holland 興趣測驗', description: '先了解自己的興趣類型與適合群科', keywords: 'holland 興趣 測驗 性向 群科', icon: Brain, color: 'text-purple-600', bg: 'bg-purple-100', action: { type: 'route', href: '/holland' } },
-      { id: 'importantDates', label: '重要日程', description: '查看報名、選填、放榜等時間', keywords: '日期 日程 簡章 報名 放榜', icon: CalendarDays, color: 'text-purple-600', bg: 'bg-purple-100', action: { type: 'route', href: '/important-dates' } },
-      { id: 'news', label: '最新消息', description: '查看資料更新與系統公告', keywords: '最新 消息 公告 116 資料 更新', icon: Megaphone, color: 'text-rose-600', bg: 'bg-rose-100', action: { type: 'route', href: '/news' } },
-      { id: 'scoreInquiry', label: '會考成績查詢', description: '前往成績查詢與相關官方資訊', keywords: '會考 成績 查詢 官方', icon: Search, color: 'text-fuchsia-600', bg: 'bg-fuchsia-100', action: { type: 'modal', id: 'scoreInquiry' } },
+      { id: 'holland', label: 'Holland 興趣測驗', description: '先了解自己的興趣類型與適合群科', keywords: 'holland 興趣 測驗 性向 群科', icon: Brain, color: 'text-indigo-600', bg: 'bg-indigo-100', action: { type: 'route', href: '/holland' } },
+      { id: 'importantDates', label: '重要日程', description: '查看報名、選填、放榜等時間', keywords: '日期 日程 簡章 報名 放榜', icon: Map,
+    color: 'text-indigo-600', bg: 'bg-indigo-100', action: { type: 'route', href: '/important-dates' } },
+      { id: 'news', label: '最新消息', description: '查看資料更新與系統公告', keywords: '最新 消息 公告 116 資料 更新', icon: Megaphone, color: 'text-indigo-600', bg: 'bg-indigo-100', action: { type: 'route', href: '/news' } },
+      { id: 'scoreInquiry', label: '會考成績查詢', description: '前往成績查詢與相關官方資訊', keywords: '會考 成績 查詢 官方', icon: SearchCheck, color: 'text-indigo-600', bg: 'bg-indigo-100', action: { type: 'modal', id: 'scoreInquiry' } },
     ],
   },
   {
@@ -130,12 +155,12 @@ export const menuCategories: MenuCategory[] = [
     label: '會員服務',
     description: '免廣告方案、LINE 資格與會員帳號',
     icon: Crown,
-    color: 'text-violet-500',
-    bg: 'bg-violet-50',
+    color: 'text-violet-600',
+    bg: 'bg-violet-100',
     accent: 'border-violet-500',
     items: [
       { id: 'membership', label: '會員免廣告', description: '查看方案並用 LINE 安全確認資格', keywords: '會員 免廣告 LINE 付款 月費 年費 方案', icon: Crown, color: 'text-violet-600', bg: 'bg-violet-100', action: { type: 'route', href: '/membership' } },
-      { id: 'membershipAccount', label: '我的會員帳號', description: '查看方案、到期日與登入狀態', keywords: '會員 帳號 到期 日 LINE 登入 資格', icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-100', action: { type: 'route', href: '/membership/account' } },
+      { id: 'membershipAccount', label: '我的會員帳號', description: '查看方案、到期日與登入狀態', keywords: '會員 帳號 到期 日 LINE 登入 資格', icon: UserCircle, color: 'text-violet-600', bg: 'bg-violet-100', action: { type: 'route', href: '/membership/account' } },
     ],
   },
   {
@@ -143,30 +168,30 @@ export const menuCategories: MenuCategory[] = [
     label: '外部連結',
     description: '前往相關平台與延伸升學資源',
     icon: LinkIcon,
-    color: 'text-violet-500',
-    bg: 'bg-violet-50',
+    color: 'text-violet-600',
+    bg: 'bg-violet-100',
     accent: 'border-violet-500',
     items: [
-      { id: 'officialVolunteer', label: '志願選填平台', description: '開啟外部志願選填平台', keywords: '志願 選填 外部 平台 官方', icon: LinkIcon, color: 'text-orange-600', bg: 'bg-orange-100', action: { type: 'external', href: 'https://tyctw.github.io/volunteer/' } },
-      { id: 'shared', label: '錄取分享', description: '開啟全國錄取結果分享平台', keywords: '共同 就學區 資料 外部 錄取 分享', icon: Share2, color: 'text-indigo-600', bg: 'bg-indigo-100', action: { type: 'external', href: 'https://tyctw.github.io/shared/' } },
-      { id: 'score', label: '序位分享', description: '開啟會考積分與序位分享平台', keywords: '會考 積分 積點 外部 序位 分享', icon: ChartBar, color: 'text-emerald-600', bg: 'bg-emerald-100', action: { type: 'external', href: 'https://tyctw.github.io/score/' } },
+      { id: 'officialVolunteer', label: '志願選填平台', description: '開啟外部志願選填平台', keywords: '志願 選填 外部 平台 官方', icon: MousePointerClick, color: 'text-violet-600', bg: 'bg-violet-100', action: { type: 'external', href: 'https://tyctw.github.io/volunteer/' } },
+      { id: 'shared', label: '錄取分享', description: '開啟全國錄取結果分享平台', keywords: '共同 就學區 資料 外部 錄取 分享', icon: Share2, color: 'text-violet-600', bg: 'bg-violet-100', action: { type: 'external', href: 'https://tyctw.github.io/shared/' } },
+      { id: 'score', label: '序位分享', description: '開啟會考積分與序位分享平台', keywords: '會考 積分 積點 外部 序位 分享', icon: BarChart4, color: 'text-violet-600', bg: 'bg-violet-100', action: { type: 'external', href: 'https://tyctw.github.io/score/' } },
     ],
   },
   {
     id: 'support',
     label: '使用協助',
     description: '操作說明、常見問題與意見回饋',
-    icon: CircleHelp,
-    color: 'text-rose-500',
-    bg: 'bg-slate-100',
+    icon: LifeBuoy,
+    color: 'text-rose-600',
+    bg: 'bg-rose-100',
     accent: 'border-rose-500',
     items: [
-      { id: 'instructions', label: '使用說明', description: '第一次使用可從這裡看操作流程', keywords: '使用 說明 教學 操作', icon: Info, color: 'text-blue-600', bg: 'bg-blue-100', action: { type: 'route', href: '/instructions' } },
-      { id: 'faqGlossary', label: '常見問答', description: '快速看懂會考、比序與志願選填名詞', keywords: '常見問答 faq 名詞 百科 超額比序 序位 五專 技高', icon: CircleHelp, color: 'text-sky-600', bg: 'bg-sky-100', action: { type: 'route', href: '/faq-glossary' } },
-      { id: 'site-map', label: '網站地圖', description: '一次查看全部功能頁面', keywords: '網站 地圖 sitemap 頁面', icon: Map, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/site-map' } },
+      { id: 'instructions', label: '使用說明', description: '第一次使用可從這裡看操作流程', keywords: '使用 說明 教學 操作', icon: BookOpenText, color: 'text-rose-600', bg: 'bg-rose-100', action: { type: 'route', href: '/instructions' } },
+      { id: 'faqGlossary', label: '常見問答', description: '快速看懂會考、比序與志願選填名詞', keywords: '常見問答 faq 名詞 百科 超額比序 序位 五專 技高', icon: MessageCircleQuestion, color: 'text-rose-600', bg: 'bg-rose-100', action: { type: 'route', href: '/faq-glossary' } },
+      { id: 'site-map', label: '網站地圖', description: '一次查看全部功能頁面', keywords: '網站 地圖 sitemap 頁面', icon: Network, color: 'text-rose-600', bg: 'bg-rose-100', action: { type: 'route', href: '/site-map' } },
       { id: 'support', label: '小額支持', description: '支持我們持續維護免費升學工具', keywords: '支持 贊助 小額 捐款 金流', icon: Heart, color: 'text-rose-600', bg: 'bg-rose-100', action: { type: 'route', href: '/support' } },
-      { id: 'rating', label: '評分與回饋', description: '留下使用感受或建議', keywords: '評分 回饋 意見', icon: Star, color: 'text-amber-500', bg: 'bg-amber-100', action: { type: 'modal', id: 'rating' } },
-      { id: 'reportError', label: '問題回報', description: '資料錯誤或系統問題從這裡回報', keywords: '錯誤 問題 回報 bug', icon: AlertCircle, color: 'text-red-500', bg: 'bg-red-100', action: { type: 'modal', id: 'reportError' } },
+      { id: 'rating', label: '評分與回饋', description: '留下使用感受或建議', keywords: '評分 回饋 意見', icon: Star, color: 'text-rose-600', bg: 'bg-rose-100', action: { type: 'modal', id: 'rating' } },
+      { id: 'reportError', label: '問題回報', description: '資料錯誤或系統問題從這裡回報', keywords: '錯誤 問題 回報 bug', icon: AlertCircle, color: 'text-rose-600', bg: 'bg-rose-100', action: { type: 'route', href: '/report-error' } },
     ],
   },
   {
@@ -174,15 +199,15 @@ export const menuCategories: MenuCategory[] = [
     label: '關於平台',
     description: '平台資訊、更新紀錄與使用規範',
     icon: Info,
-    color: 'text-emerald-500',
-    bg: 'bg-slate-100',
+    color: 'text-emerald-600',
+    bg: 'bg-emerald-100',
     accent: 'border-emerald-500',
     items: [
-      { id: 'advantages', label: '平台特色', description: '了解這個工具提供哪些輔助功能', keywords: '特色 優勢 功能 平台', icon: Sparkles, color: 'text-indigo-600', bg: 'bg-indigo-100', action: { type: 'route', href: '/advantages' } },
-      { id: 'changelog', label: '更新紀錄', description: '查看最近調整與版本變更', keywords: '更新 紀錄 changelog 版本', icon: History, color: 'text-slate-500', bg: 'bg-slate-100', action: { type: 'route', href: '/changelog' } },
-      { id: 'disclaimer', label: '免責聲明', description: '了解分析結果的使用限制', keywords: '提醒 免責 聲明 注意', icon: Shield, color: 'text-slate-600', bg: 'bg-slate-100', action: { type: 'route', href: '/disclaimer' } },
+      { id: 'advantages', label: '平台特色', description: '了解這個工具提供哪些輔助功能', keywords: '特色 優勢 功能 平台', icon: ThumbsUp, color: 'text-emerald-600', bg: 'bg-emerald-100', action: { type: 'route', href: '/advantages' } },
+      { id: 'changelog', label: '更新紀錄', description: '查看最近調整與版本變更', keywords: '更新 紀錄 changelog 版本', icon: History, color: 'text-emerald-600', bg: 'bg-emerald-100', action: { type: 'route', href: '/changelog' } },
+      { id: 'disclaimer', label: '免責聲明', description: '了解分析結果的使用限制', keywords: '提醒 免責 聲明 注意', icon: ShieldAlert, color: 'text-emerald-600', bg: 'bg-emerald-100', action: { type: 'route', href: '/disclaimer' } },
       { id: 'privacy', label: '隱私權政策', description: '查看資料使用與隱私說明', keywords: '隱私 個資 政策 privacy', icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-100', action: { type: 'route', href: '/privacy' } },
-      { id: 'terms', label: '服務條款', description: '查看平台使用規範', keywords: '條款 服務 規範 terms', icon: FileText, color: 'text-slate-600', bg: 'bg-slate-100', action: { type: 'route', href: '/terms' } },
+      { id: 'terms', label: '服務條款', description: '查看平台使用規範', keywords: '條款 服務 規範 terms', icon: FileText, color: 'text-emerald-600', bg: 'bg-emerald-100', action: { type: 'route', href: '/terms' } },
     ],
   },
 ];
@@ -198,6 +223,7 @@ export default function NavigationDrawer({ isOpen, onClose, setActiveModal }: Na
   const [isCompactNavigation, setIsCompactNavigation] = useState(isCompactNavigationViewport);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
+  const menuScrollRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const hasHistoryEntryRef = useRef(false);
   const isMobileCategoryOpenRef = useRef(false);
@@ -223,7 +249,14 @@ export default function NavigationDrawer({ isOpen, onClose, setActiveModal }: Na
     );
   };
 
+  const scrollMenuToTop = () => {
+    if (menuScrollRef.current) {
+      menuScrollRef.current.scrollTop = 0;
+    }
+  };
+
   const returnToMainMenu = () => {
+    scrollMenuToTop();
     if (isMobileCategoryOpenRef.current) {
       window.history.back();
       return;
@@ -265,6 +298,7 @@ export default function NavigationDrawer({ isOpen, onClose, setActiveModal }: Na
       if (state?.navigationDrawerOpen && state.navigationDrawerLevel === 'root') {
         isMobileCategoryOpenRef.current = false;
         setMobileCategory(null);
+        requestAnimationFrame(scrollMenuToTop);
         return;
       }
 
@@ -408,7 +442,7 @@ export default function NavigationDrawer({ isOpen, onClose, setActiveModal }: Na
               <p id="main-navigation-description" className="sr-only">可使用搜尋、分類與常用捷徑找到網站功能；按 Escape 可關閉選單。</p>
             </div>
 
-            <div className={isCompactNavigation
+            <div ref={menuScrollRef} className={isCompactNavigation
               ? 'custom-scrollbar flex-1 space-y-3 overflow-y-auto rounded-t-[2rem] bg-white p-4'
               : 'custom-scrollbar flex-1 space-y-4 overflow-y-auto p-6'}>
               {mobileCategory ? (
@@ -426,12 +460,19 @@ export default function NavigationDrawer({ isOpen, onClose, setActiveModal }: Na
                     {mobileCategory.items.map((item) => {
                       const ItemIcon = item.icon;
                       return (
-                        <button key={item.id} type="button" onClick={() => runAction(item.action)} className="flex w-full items-center justify-between rounded-[1.7rem] bg-slate-100 px-5 py-5 text-left transition hover:bg-slate-200">
-                          <span className="flex min-w-0 items-center gap-4">
-                            <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white ${item.color}`}><ItemIcon className="h-5 w-5" /></span>
-                            <span className="min-w-0"><span className="block text-lg font-black text-slate-900">{item.label}</span><span className="mt-1 block text-sm font-bold leading-snug text-slate-600">{item.description}</span></span>
-                          </span>
-                          <ChevronRight className="ml-3 h-5 w-5 shrink-0 text-slate-400" />
+                        <button key={item.id} type="button" onClick={() => runAction(item.action)} className="group flex w-full items-stretch justify-between overflow-hidden rounded-[1.8rem] bg-slate-100 text-left outline-none transition-colors hover:bg-slate-200">
+                          <div className="flex min-w-0 items-center">
+                            <div className={`flex w-16 shrink-0 items-center justify-center self-stretch transition-colors group-hover:brightness-95 ${item.bg} ${item.color}`}>
+                              <ItemIcon className="h-6 w-6" />
+                            </div>
+                            <span className="min-w-0 py-4 pl-4 pr-3">
+                               <span className="block text-lg font-black text-slate-900">{item.label}</span>
+                               <span className="mt-1 block text-sm font-bold leading-snug text-slate-600">{item.description}</span>
+                            </span>
+                          </div>
+                          <div className="flex items-center pr-4">
+                             <ChevronRight className="h-5 w-5 shrink-0 text-slate-400 transition-all group-hover:translate-x-1" />
+                          </div>
                         </button>
                       );
                     })}
@@ -474,10 +515,10 @@ export default function NavigationDrawer({ isOpen, onClose, setActiveModal }: Na
                         aria-expanded={isExpanded}
                         aria-controls={`nav-category-${category.id}`}
                         className={isMobileViewport
-                          ? 'flex min-h-[104px] w-full items-center justify-between bg-slate-100 px-7 py-4 text-left outline-none transition-colors hover:bg-slate-200'
+                          ? 'group flex min-h-[104px] w-full items-stretch justify-between overflow-hidden rounded-[1.8rem] bg-slate-100 text-left outline-none transition-colors hover:bg-slate-200'
                           : `flex min-h-0 w-full items-center justify-between border-l-8 p-4 ${category.bg} ${category.accent} outline-none transition-colors hover:bg-opacity-80`}
                       >
-                        <div className={`flex min-w-0 items-center ${isMobileViewport ? 'gap-0' : 'gap-3'}`}>
+                        <div className={`flex min-w-0 items-center ${isMobileViewport ? 'flex-1 py-4 pl-7 pr-3' : 'gap-3'}`}>
                           <div className={`${isMobileViewport ? 'hidden' : 'flex'} h-10 w-10 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]`}>
                             <CategoryIcon className={`h-5 w-5 ${category.color}`} />
                           </div>
@@ -490,8 +531,8 @@ export default function NavigationDrawer({ isOpen, onClose, setActiveModal }: Na
                           <span className="rounded-lg border border-slate-200 bg-white/80 px-2 py-1 text-[11px] font-black text-slate-500">{category.items.length}</span>
                           <ChevronDown className={`h-5 w-5 text-slate-900 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                         </div>
-                        <div className={`${isMobileViewport ? 'flex' : 'hidden'} h-16 w-16 shrink-0 items-center justify-center rounded-full border-2 border-white/80 bg-white/70 shadow-sm ${category.color}`}>
-                          <CategoryIcon className="h-8 w-8" />
+                        <div className={`${isMobileViewport ? 'flex' : 'hidden'} w-24 shrink-0 items-center justify-center transition-colors group-hover:brightness-95 ${category.bg} ${category.color}`}>
+                          <CategoryIcon className="h-10 w-10 transition-transform group-hover:scale-110" />
                         </div>
                       </button>
                       <AnimatePresence>
@@ -514,22 +555,24 @@ export default function NavigationDrawer({ isOpen, onClose, setActiveModal }: Na
                                     type="button"
                                     onClick={() => runAction(item.action)}
                                     aria-label={isExternal ? `${item.label}，新分頁開啟` : item.label}
-                                    className="group flex w-full items-center justify-between rounded-xl border-2 border-transparent px-4 py-3.5 text-left transition-all hover:border-slate-900 hover:bg-slate-50 active:scale-95"
+                                    className="group flex w-full items-stretch justify-between overflow-hidden rounded-xl border-2 border-transparent text-left outline-none transition-all hover:border-slate-900 hover:bg-slate-50 active:scale-[0.98]"
                                   >
-                                    <div className="flex min-w-0 items-center gap-3">
-                                      <div className={`rounded-lg border-2 border-slate-900 p-1.5 ${category.bg}`}>
-                                        <ItemIcon className={`h-5 w-5 ${category.color}`} />
+                                    <div className="flex min-w-0 items-center">
+                                      <div className={`flex w-14 shrink-0 items-center justify-center self-stretch transition-colors group-hover:brightness-95 ${item.bg} ${item.color}`}>
+                                        <ItemIcon className="h-5 w-5" />
                                       </div>
-                                      <span className="min-w-0">
+                                      <span className="min-w-0 py-3.5 pl-3 pr-2">
                                         <span className="block break-words font-black leading-tight text-slate-900">{item.label}</span>
-                                        <span className="mt-0.5 block text-xs font-bold leading-snug text-slate-500">{item.description}</span>
+                                        <span className="mt-0.5 block text-[13px] font-bold leading-snug text-slate-500">{item.description}</span>
                                       </span>
                                     </div>
-                                    {isExternal ? (
-                                      <ArrowRight className="h-4 w-4 shrink-0 -rotate-45 text-slate-400 transition-transform group-hover:rotate-0 group-hover:text-slate-900" />
-                                    ) : (
-                                      <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition-all group-hover:translate-x-1 group-hover:text-slate-900" />
-                                    )}
+                                    <div className="flex items-center pr-3">
+                                      {isExternal ? (
+                                        <ArrowRight className="h-4 w-4 shrink-0 -rotate-45 text-slate-400 transition-transform group-hover:rotate-0 group-hover:text-slate-900" />
+                                      ) : (
+                                        <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition-all group-hover:translate-x-1 group-hover:text-slate-900" />
+                                      )}
+                                    </div>
                                   </button>
                                 );
                               })}
@@ -542,19 +585,22 @@ export default function NavigationDrawer({ isOpen, onClose, setActiveModal }: Na
                 })
               )}
 
-              <div className="flex justify-center gap-4 rounded-2xl border-4 border-slate-900 bg-white p-4 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)]">
-                <a href="https://www.instagram.com/exam.tw/" target="_blank" rel="noreferrer" className="group flex items-center gap-2 outline-none">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-slate-900 bg-pink-50 text-pink-600 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] transition-all group-hover:scale-110 group-hover:bg-pink-100 group-hover:shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] active:scale-95">
-                    <Instagram className="h-5 w-5 transition-transform group-hover:rotate-0" />
+              <div className="grid grid-cols-2 gap-3">
+                <a href="https://www.instagram.com/exam.tw/" target="_blank" rel="noreferrer" className="group flex items-stretch overflow-hidden rounded-[1.5rem] bg-slate-100 outline-none transition hover:bg-slate-200">
+                  <div className="flex w-14 shrink-0 items-center justify-center bg-pink-100 text-pink-600 transition-colors group-hover:brightness-95">
+                    <Instagram className="h-5 w-5 transition-transform group-hover:scale-110" />
                   </div>
-                  <span className="text-sm font-bold text-slate-700">Instagram</span>
+                  <div className="flex flex-1 items-center justify-center py-3.5 pr-3">
+                    <span className="text-[15px] font-black text-slate-700">Instagram</span>
+                  </div>
                 </a>
-                <div className="mx-2 h-10 w-0.5 rounded-full bg-slate-200" />
-                <a href="https://www.threads.com/@exam.tw" target="_blank" rel="noreferrer" className="group flex items-center gap-2 outline-none">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-slate-900 bg-slate-50 text-slate-700 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] transition-all group-hover:scale-110 group-hover:bg-slate-100 group-hover:shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] active:scale-95">
+                <a href="https://www.threads.com/@exam.tw" target="_blank" rel="noreferrer" className="group flex items-stretch overflow-hidden rounded-[1.5rem] bg-slate-100 outline-none transition hover:bg-slate-200">
+                  <div className="flex w-14 shrink-0 items-center justify-center bg-slate-200 text-slate-700 transition-colors group-hover:brightness-95">
                     <ThreadsIcon className="h-5 w-5 transition-transform group-hover:scale-110" />
                   </div>
-                  <span className="text-sm font-bold text-slate-700">Threads</span>
+                  <div className="flex flex-1 items-center justify-center py-3.5 pr-3">
+                    <span className="text-[15px] font-black text-slate-700">Threads</span>
+                  </div>
                 </a>
               </div>
 

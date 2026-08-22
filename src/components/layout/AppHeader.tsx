@@ -117,9 +117,9 @@ export default function AppHeader({ isScrolled, onShareClick, onMenuClick, setAc
   }, [globalSearchTerm]);
 
   return (
-    <div className={`fixed top-0 left-0 right-0 z-[90] pointer-events-none transition-all duration-300 ${isScrolled ? 'p-2' : 'p-2 sm:p-4'}`}>
+    <div className={`fixed top-0 left-0 right-0 z-[90] pointer-events-none transition-all duration-300 ${isScrolled ? 'p-2' : 'p-0'}`}>
       <div className="mx-auto w-full max-w-none pointer-events-auto">
-        <header onMouseEnter={keepMenuOpen} onMouseLeave={closeMenuWithDelay} className={`relative bg-white/95 backdrop-blur-md rounded-[1.65rem] flex items-center justify-between gap-2 transition-all duration-300 ${isScrolled ? 'border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] p-2' : 'border-4 border-slate-900 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] p-2 sm:p-3 hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_0px_rgba(15,23,42,1)]'}`}>
+        <header onMouseEnter={keepMenuOpen} onMouseLeave={closeMenuWithDelay} className={`relative bg-white/95 backdrop-blur-md flex items-center justify-between gap-2 transition-all duration-300 ${isScrolled ? 'rounded-[1.65rem] border-2 border-slate-900 p-2 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]' : 'rounded-none border-x-0 border-t-0 border-b-2 border-slate-900 p-2 sm:p-3 shadow-[0_2px_0px_0px_rgba(15,23,42,1)]'}`}>
           <a href={withBasePath('/')} aria-label="回到會考落點分析首頁" className="flex shrink-0 items-center gap-2 sm:gap-3">
             <div className={`bg-indigo-600 border-slate-900 flex items-center justify-center text-white font-black shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] transition-all ${isScrolled ? 'w-10 h-10 rounded-xl border-2 text-xl' : 'w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl border-2 sm:border-3 text-xl sm:text-2xl'}`}>
               會
@@ -169,7 +169,9 @@ export default function AppHeader({ isScrolled, onShareClick, onMenuClick, setAc
                             <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${item.bg} ${item.color}`}><ItemIcon className="h-4 w-4" /></span>
                             <span className="truncate">{item.label}</span>
                           </span>
-                          <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" />
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors group-hover:bg-amber-300 group-hover:text-slate-900">
+                            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                          </span>
                         </button>
                       );
                     })}
@@ -188,21 +190,23 @@ export default function AppHeader({ isScrolled, onShareClick, onMenuClick, setAc
                 </div>
                 <div className="order-1">
                   <p className="mb-3 px-1 text-sm font-black text-slate-500">探索更多</p>
-                  <div className="-m-1 grid max-h-[calc(100vh-12rem)] grid-cols-3 gap-3 overflow-y-auto p-1 pr-2">
+                  <div className="-m-1 grid max-h-[calc(100vh-12rem)] grid-cols-2 gap-3 overflow-y-auto p-1 pr-2">
                     {selectedItems.map((item, itemIndex) => {
                       const ItemIcon = item.icon;
                       return (
-                        <button key={item.id} type="button" onClick={() => runAction(item)} className={`group relative z-0 rounded-[1.35rem] border-2 border-slate-100 p-4 text-left transition hover:z-10 hover:-translate-y-0.5 hover:border-slate-900 hover:shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] ${itemIndex === 0 ? 'bg-amber-50' : 'bg-slate-50'}`}>
-                          <span className="flex items-center justify-between gap-2">
-                            <span className="text-[10px] font-black text-slate-500">{item.categoryLabel}</span>
-                            <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${item.bg} ${item.color}`}><ItemIcon className="h-4 w-4" /></span>
+                        <button key={item.id} type="button" onClick={() => runAction(item)} className={`group relative z-0 flex items-stretch overflow-hidden rounded-[1.35rem] border-2 border-slate-100 text-left transition hover:z-10 hover:-translate-y-0.5 hover:border-slate-900 hover:shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] ${itemIndex === 0 ? 'bg-amber-50' : 'bg-slate-50'}`}>
+                          <span className={`flex w-14 shrink-0 items-center justify-center transition-colors group-hover:brightness-95 ${item.bg} ${item.color}`}>
+                            <ItemIcon className="h-6 w-6" />
                           </span>
-                          <span className="mt-2 flex items-center justify-between gap-2 text-base font-black leading-snug text-slate-900">
-                            <span>
-                              <span className="block">{item.label}</span>
+                          <span className="flex min-w-0 flex-1 items-center gap-3 p-4 pl-3">
+                            <span className="flex min-w-0 flex-1 flex-col">
+                              <span className="text-[10px] font-black text-slate-500">{item.categoryLabel}</span>
+                              <span className="mt-0.5 block text-[15px] font-black leading-snug text-slate-900">{item.label}</span>
                               <span className="mt-1 block text-xs font-bold leading-snug text-slate-500">{item.description}</span>
                             </span>
-                            <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" />
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors group-hover:bg-amber-300 group-hover:text-slate-900">
+                              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                            </span>
                           </span>
                         </button>
                       );
@@ -242,7 +246,7 @@ export default function AppHeader({ isScrolled, onShareClick, onMenuClick, setAc
           </div>
 
           {isGlobalSearchOpen && createPortal(
-            <div onClick={closeGlobalSearch} onKeyDown={handleGlobalSearchKeyDown} className="fixed inset-0 z-[150] bg-slate-900/80 p-2 sm:p-4" role="dialog" aria-modal="true" aria-label="搜尋全站功能" aria-describedby="global-search-help" ref={globalSearchDialogRef}>
+            <div onClick={closeGlobalSearch} onKeyDown={handleGlobalSearchKeyDown} className="fixed inset-0 z-[150] bg-slate-950/65 p-2 backdrop-blur-md sm:p-4" role="dialog" aria-modal="true" aria-label="搜尋全站功能" aria-describedby="global-search-help" ref={globalSearchDialogRef}>
               <div onClick={(event) => event.stopPropagation()} className="mx-auto w-full max-w-none rounded-[1.65rem] bg-white p-2 sm:p-3">
                 <p id="global-search-help" className="sr-only">輸入關鍵字搜尋全站功能。按 Escape 可關閉搜尋視窗。</p>
                 <div className="flex items-center gap-3 lg:gap-6">
@@ -263,18 +267,28 @@ export default function AppHeader({ isScrolled, onShareClick, onMenuClick, setAc
                   </div>
                 </div>
                 {globalSearchTerm && (
-                  <div className="mt-3 max-h-[70vh] overflow-y-auto rounded-[1.75rem] bg-white p-3 shadow-xl sm:p-4" aria-live="polite" aria-atomic="true">
+                  <div className="mx-auto mt-4 max-h-[75vh] w-full overflow-y-auto rounded-[2rem] bg-slate-50 p-3 shadow-[0_12px_35px_rgba(15,23,42,0.18)] sm:p-4" aria-live="polite" aria-atomic="true">
                     {globalSearchResults.length ? (
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {globalSearchResults.map((item) => (
-                          <button key={item.id} type="button" onClick={() => { setIsGlobalSearchOpen(false); setGlobalSearchTerm(''); runAction(item); }} className="group flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 text-left transition hover:bg-amber-50">
-                            <span><span className="block text-[11px] font-black text-slate-500">{item.categoryLabel}</span><span className="mt-0.5 block font-black text-slate-900">{item.label}</span><span className="mt-0.5 block text-xs font-bold text-slate-500">{item.description}</span></span>
-                            <ArrowRight className="ml-3 h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" />
-                          </button>
-                        ))}
+                      <div>
+                        <div className="mb-3 flex items-center justify-between gap-3 px-2">
+                          <div><p className="text-[11px] font-black tracking-[0.14em] text-indigo-600">SEARCH RESULTS</p><h2 className="mt-0.5 text-base font-black text-slate-900 sm:text-lg">找到符合的功能</h2></div>
+                          <span className="rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-900">{globalSearchResults.length} 項結果</span>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {globalSearchResults.map((item) => {
+                            const ItemIcon = item.icon;
+                            return (
+                              <button key={item.id} type="button" onClick={() => { setIsGlobalSearchOpen(false); setGlobalSearchTerm(''); runAction(item); }} className="group flex min-h-[118px] items-center gap-4 rounded-[1.4rem] border-2 border-slate-200 bg-white p-4 text-left shadow-[2px_2px_0_rgba(15,23,42,0.08)] transition-all hover:-translate-y-0.5 hover:border-slate-900 hover:shadow-[4px_4px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2">
+                                <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-900 ${item.bg} ${item.color}`}><ItemIcon className="h-6 w-6" /></span>
+                                <span className="min-w-0 flex-1"><span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-500">{item.categoryLabel}</span><span className="mt-1.5 block font-black leading-tight text-slate-900">{item.label}</span><span className="mt-1 block line-clamp-2 text-xs font-bold leading-5 text-slate-500">{item.description}</span></span>
+                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-all group-hover:bg-amber-300 group-hover:text-slate-900"><ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     ) : (
-                      <p className="p-6 text-center font-bold text-slate-500">找不到相符的功能，請換個關鍵字試試。</p>
+                      <div className="px-5 py-10 text-center"><span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white text-slate-400"><Search className="h-6 w-6" /></span><p className="mt-4 font-black text-slate-800">找不到相符的功能</p><p className="mt-1 text-sm font-bold text-slate-500">試試學校、科別、志願或計分規則等關鍵字。</p></div>
                     )}
                   </div>
                 )}

@@ -21,6 +21,7 @@ import Footer from './components/layout/Footer';
 import HeroBanner from './components/layout/HeroBanner';
 import MembershipPromo from './components/MembershipPromo';
 import { formatSchoolOwnership, getSchoolOwnershipKey } from './lib/schoolDisplay';
+import { getCreditsGap, getPointsGap } from './lib/admissionComparison';
 import { withBasePath } from './lib/routes';
 
 // Keep the analysis form and navigation in the first bundle. These dialogs are
@@ -30,7 +31,6 @@ const VocationalModal = React.lazy(() => import('./components/VocationalModal'))
 const HollandTestModal = React.lazy(() => import('./components/HollandTestModal'));
 const ComparisonModal = React.lazy(() => import('./components/ComparisonModal'));
 const ExportModal = React.lazy(() => import('./components/ExportModal'));
-const ReportErrorModal = React.lazy(() => import('./components/ReportErrorModal'));
 const HistoricalStatsModal = React.lazy(() => import('./components/HistoricalStatsModal'));
 const ScoreInquiryModal = React.lazy(() => import('./components/ScoreInquiryModal'));
 const SharePlatformModal = React.lazy(() => import('./components/SharePlatformModal'));
@@ -39,6 +39,15 @@ const AuthFailModal = React.lazy(() => import('./components/AuthFailModal'));
 
 const DISCLAIMER_SEEN_KEY = 'tw-admission-disclaimer-seen';
 const RESULTS_STORAGE_KEY = 'tw-admission-analysis-results';
+
+/** SHA-256 雜湊邀請碼，回傳 hex 字串。localStorage 只存雜湊值，不留明文。 */
+async function hashInvitationCode(code: string): Promise<string> {
+  const encoded = new TextEncoder().encode(code);
+  const digest = await crypto.subtle.digest('SHA-256', encoded);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
 
 const normalizeHistoricalScores = (scores: any[] = []) =>
   scores
@@ -202,7 +211,7 @@ export default function App() {
   const [memberAccess, setMemberAccess] = useState(false);
   
   // Modals state
-const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' | 'qrcode' | 'rating' | 'authFail' | 'validationFailed' | 'export' | 'scoringMethod' | 'sharePlatform' | 'reportError' | 'strategy' | 'historicalStats' | 'scoreInquiry' | null>(null);
+const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' | 'qrcode' | 'rating' | 'authFail' | 'validationFailed' | 'export' | 'scoringMethod' | 'sharePlatform' | 'strategy' | 'historicalStats' | 'scoreInquiry' | null>(null);
   const [isVocationalOpen, setIsVocationalOpen] = useState(false);
   const [isHollandTestOpen, setIsHollandTestOpen] = useState(false);
   const [isRegionOpen, setIsRegionOpen] = useState(false);
@@ -359,16 +368,22 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
 
     if (cachedAuth) {
       try {
-        const parsed = JSON.parse(cachedAuth) as { code?: string; timestamp?: number };
-        hasValidAuthCache =
-          parsed.code === invitationCode &&
+        const parsed = JSON.parse(cachedAuth) as { hash?: string; timestamp?: number; code?: string };
+        // 舊版快取含明文 code 欄位，視為無效並清除，強制重新驗證。
+        if (parsed.code !== undefined) {
+          localStorage.removeItem('invitationAuthCache');
+        } else if (
+          typeof parsed.hash === 'string' &&
           typeof parsed.timestamp === 'number' &&
-          now - parsed.timestamp < tenMinutes;
+          now - parsed.timestamp < tenMinutes
+        ) {
+          hasValidAuthCache = parsed.hash === await hashInvitationCode(invitationCode);
+        }
       } catch {
         localStorage.removeItem('invitationAuthCache');
       }
     }
-    
+
     if (hasValidAuthCache) {
       setStatus('quantum');
       void executeAnalysis();
@@ -487,7 +502,7 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-indigo-100 pb-32 overflow-hidden relative">
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-slate-50 font-sans text-slate-900 selection:bg-indigo-100">
       <a href="#main-content" className="skip-link">跳到主要內容</a>
       
       {/* Modern Background Blur Orbs */}
@@ -501,7 +516,7 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
         setActiveModal={setActiveModal}
       />
 
-      <main id="main-content" aria-label="主要內容" className="max-w-6xl mx-auto px-4 mt-32 sm:mt-40 space-y-8 relative z-10">
+      <main id="main-content" aria-label="主要內容" className="relative z-10 mx-auto mt-32 w-full max-w-6xl flex-1 space-y-8 px-4 sm:mt-40">
         
         <HeroBanner />
 
@@ -600,7 +615,7 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
                   href="https://tyctw.github.io/form/" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-xs font-bold text-amber-600 hover:text-amber-700 hover:underline flex items-center gap-1 active:scale-95 transition-transform"
+                  className="flex items-center gap-1 text-xs font-bold text-amber-600 underline decoration-2 decoration-amber-400 underline-offset-2 transition-transform hover:text-amber-700 active:scale-95"
                 >
                   尚未取得邀請碼？點此獲取
                 </a>
@@ -683,7 +698,7 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
                     <button 
                       type="button"
                       onClick={() => { window.location.href = withBasePath('/school-types'); }}
-                      className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1 active:scale-95 transition-transform"
+                      className="flex items-center gap-1 text-xs font-bold text-emerald-600 underline decoration-2 decoration-emerald-400 underline-offset-2 transition-transform hover:text-emerald-700 active:scale-95"
                     >
                       <Building2 className="w-3 h-3" />
                       學校類型解析說明
@@ -720,7 +735,7 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
                       </label>
                       <button 
                         onClick={() => { window.location.href = withBasePath('/vocational-encyclopedia'); }}
-                        className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1 active:scale-95 transition-transform"
+                        className="flex items-center gap-1 text-xs font-bold text-emerald-600 underline decoration-2 decoration-emerald-400 underline-offset-2 transition-transform hover:text-emerald-700 active:scale-95"
                       >
                         <BookOpen className="w-3 h-3" />
                         職群/科系深入介紹百科
@@ -921,6 +936,12 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
                       case 'kaohsiung':
                          compScore = `${comp}級分 (優先比序)`;
                          break;
+                      case 'chiayi':
+                         if (comp >= 5) compScore = '2分';
+                         else if (comp >= 3) compScore = '1.5分';
+                         else if (comp >= 1) compScore = '1分';
+                         else compScore = '0分';
+                         break;
                       default:
                          compScore = '同分比序用';
                          break;
@@ -948,23 +969,29 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
       {/* Floating Action Bar */}
       <div className="sticky bottom-6 left-0 right-0 w-full px-4 z-50 pointer-events-none mt-8">
         <div className="max-w-2xl mx-auto pointer-events-auto">
-          <button
-            type="button"
-            onClick={handleAnalyze}
-            disabled={status === 'auth' || status === 'quantum'}
-            aria-busy={status === 'auth' || status === 'quantum'}
-            className="w-full flex items-center justify-center gap-3 bg-amber-400 border-4 border-slate-950 text-slate-950 shadow-[5px_5px_0px_0px_rgba(15,23,42,1)] ring-4 ring-amber-200/90 rounded-2xl py-4 px-8 text-2xl font-black transition-all hover:-translate-y-1 hover:bg-amber-300 hover:shadow-[7px_7px_0px_0px_rgba(15,23,42,1)] active:translate-y-1 active:shadow-[1px_1px_0px_0px_rgba(15,23,42,1)] disabled:bg-slate-400 disabled:ring-0 group"
-          >
-            {status === 'quantum' ? (
-              <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
-                <Activity className="w-6 h-6" />
-              </motion.div>
-            ) : (
-              <>
-                開始落點分析
-              </>
-            )}
-          </button>
+          <div className="relative group">
+            <button
+              type="button"
+              onClick={handleAnalyze}
+              disabled={status === 'auth' || status === 'quantum'}
+              aria-busy={status === 'auth' || status === 'quantum'}
+              className="w-full relative flex items-center justify-center bg-amber-400 border-4 border-slate-950 text-slate-950 shadow-[6px_6px_0px_0px_rgba(15,23,42,1)] sm:shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] rounded-2xl py-4 sm:py-5 px-6 transition-all hover:-translate-y-1.5 hover:bg-amber-300 hover:shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] sm:hover:shadow-[10px_10px_0px_0px_rgba(15,23,42,1)] active:translate-y-1 active:shadow-[1px_1px_0px_0px_rgba(15,23,42,1)] disabled:bg-slate-400 disabled:shadow-none disabled:translate-y-2 overflow-visible"
+            >
+              {status === 'quantum' ? (
+                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
+                  <Activity className="w-8 h-8" />
+                </motion.div>
+              ) : (
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="bg-slate-900 text-amber-400 p-1.5 sm:p-2 rounded-xl">
+                    <Target className="w-6 h-6 sm:w-7 sm:h-7" />
+                  </div>
+                  <span className="text-3xl sm:text-4xl font-black tracking-tight">立即落點分析</span>
+                  <ArrowRight strokeWidth={4.5} className="w-7 h-7 sm:w-8 sm:h-8" />
+                </div>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -972,9 +999,10 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
         isOpen={status === 'auth' || status === 'quantum'}
         code={formData.invitationCode}
         skipValidation={status === 'quantum'}
-        onSuccess={() => {
+        onSuccess={async () => {
+          const hash = await hashInvitationCode(normalizeInvitationCode(formData.invitationCode));
           localStorage.setItem('invitationAuthCache', JSON.stringify({
-            code: normalizeInvitationCode(formData.invitationCode),
+            hash,
             timestamp: Date.now(),
           }));
           setStatus('quantum');
@@ -1291,8 +1319,6 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
                 
                 {(() => {
                   const zoneOrder: Record<string, number> = { reach: 0, target: 1, safe: 2 };
-                  const getPointsGap = (school: any) => Math.abs(school.scoreDiff ?? school.pointsDiff ?? school.distanceScore ?? 0);
-                  const getCreditsGap = (school: any) => Math.abs(school.creditDiff ?? school.creditsDiff ?? 0);
                   const filteredSchools = (results.eligibleSchools || []).filter((school: any) => {
                     const matchText = !resultFilterText || 
                       school.name?.includes(resultFilterText) || 
@@ -1585,10 +1611,6 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
             setActiveModal(null);
           }}
         />
-      )}
-
-      {activeModal === 'reportError' && (
-        <ReportErrorModal isOpen onClose={() => setActiveModal(null)} />
       )}
 
       <InfoModal 
@@ -2030,6 +2052,7 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
         isOpen={activeModal === 'validationFailed'} 
         onClose={() => setActiveModal(null)}
         bare
+        topMost
         title="資料不齊全"
         icon={<AlertCircle className="w-8 h-8 text-rose-500" />}
       >

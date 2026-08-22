@@ -28,6 +28,7 @@ const NewsArticlePage = lazy(() => import('./components/NewsArticlePage.tsx'));
 const MockVolunteerPage = lazy(() => import('./components/MockVolunteerPage.tsx'));
 const SearchPage = lazy(() => import('./components/SearchPage.tsx'));
 const ResultsPage = lazy(() => import('./components/ResultsPage.tsx'));
+const ReportErrorPage = lazy(() => import('./components/ReportErrorPage.tsx'));
 const SharedReportPage = lazy(() => import('./components/SharedReportPage.tsx'));
 const SiteMapPage = lazy(() => import('./components/SiteMapPage.tsx'));
 const SchoolTypesPage = lazy(() => import('./components/SchoolTypesPage.tsx'));
@@ -40,6 +41,7 @@ const MembershipPage = lazy(() => import('./components/MembershipPage.tsx'));
 const MembershipAccountPage = lazy(() => import('./components/MembershipAccountPage.tsx'));
 const VocationalEncyclopediaPage = lazy(() => import('./components/VocationalEncyclopediaPage.tsx'));
 const RegionScoringRulesPage = lazy(() => import('./components/RegionScoringRulesPage.tsx'));
+const AreaPage = lazy(() => import('./components/AreaPage.tsx'));
 
 function PageLoading() {
   return (
@@ -70,6 +72,7 @@ const path = isAcademicGroupRoute ? '/general-comprehensive-high-school' : rawPa
 if (isAcademicGroupRoute) window.history.replaceState(null, '', withBasePath('/general-comprehensive-high-school'));
 const sharedReportToken = path.match(/^\/shared\/([0-9a-f-]+)$/i)?.[1];
 const scoringRulesRegionId = path.match(/^\/scoring-rules\/([a-z-]+)$/)?.[1];
+const areaSlug = path.match(/^\/area\/([a-z-]+)$/)?.[1];
 const newsArticleId = path.match(/^\/news\/(\d+)$/)?.[1];
 const redirectedRoute = new URLSearchParams(window.location.search).get('route');
 if (redirectedRoute) window.history.replaceState(null, '', withBasePath(path));
@@ -96,6 +99,7 @@ const page =
   path === '/mock-volunteer' ? <MockVolunteerPage /> :
   path === '/search' ? <SearchPage /> :
   path === '/results' ? <ResultsPage /> :
+  path === '/report-error' ? <ReportErrorPage /> :
   sharedReportToken ? <SharedReportPage token={sharedReportToken} /> :
   path === '/site-map' ? <SiteMapPage /> :
   path === '/instructions' ? <InstructionsPage /> :
@@ -113,10 +117,11 @@ const page =
   path === '/refund-cancellation-policy' ? <SupportPolicyPage kind="refund-cancellation" /> :
   path === '/vocational-encyclopedia' ? <VocationalEncyclopediaPage /> :
   scoringRulesRegionId ? <RegionScoringRulesPage regionId={scoringRulesRegionId} /> :
+  areaSlug ? <AreaPage slug={areaSlug} /> :
   <App />;
 
 const informationalPaths = new Set(['/advantages', '/disclaimer', '/faq-glossary', '/five-year-college-rules', '/grade-level', '/grade-11-pathways', '/general-comprehensive-high-school', '/historical-stats', '/important-dates', '/instructions', '/holland', '/school-types', '/strategy', '/vocational-encyclopedia']);
-const showRelatedReading = informationalPaths.has(path) || path.startsWith('/scoring-rules/');
+const showRelatedReading = informationalPaths.has(path) || path.startsWith('/scoring-rules/') || path.startsWith('/area/');
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode><AccessibilityEnhancements /><AppErrorBoundary><Suspense fallback={<PageLoading />}>{page}{showRelatedReading && <RelatedReading path={path} />}</Suspense></AppErrorBoundary></StrictMode>,
