@@ -783,6 +783,19 @@ function calculateScores(region: string, scores: Scores): ScoreResult {
     };
   }
 
+  if (region === 'chiayi') {
+    const points = { 'A++': 5, 'A+': 5, A: 5, 'B++': 3, 'B+': 3, B: 3, C: 1 };
+    const credits = { 'A++': 9, 'A+': 8, A: 7, 'B++': 5, 'B+': 4, B: 3, C: 1 };
+    const compositionPoints = scores.composition >= 5 ? 2 : scores.composition >= 3 ? 1.5 : scores.composition >= 1 ? 1 : 0;
+
+    return {
+      totalPoints: roundScore(sumSubjects(scores, points) + compositionPoints),
+      totalCredits: sumSubjects(scores, credits),
+      breakdown: buildBreakdown(scores, points, credits, compositionPoints),
+      scoringMethod: '五科以精熟=5、基礎=3、待加強=1計積分；寫作6、5級分2分，4、3級分1.5分，2、1級分1分，會考項目最高27分。五科積點依 A++=9、A+=8、A=7、B++=5、B+=4、B=3、C=1 換算，供同分比較使用。',
+    };
+  }
+
   throw new Error(`無效的地區指定: ${region}`);
 }
 
@@ -796,7 +809,7 @@ function filterSchools(
 ) {
   let margin = 2;
   if (region === 'central' || region === 'changhua') margin = 3;
-  if (region === 'taipei' || region === 'tainan' || region === 'hsinchu') margin = 1.5;
+  if (region === 'taipei' || region === 'tainan' || region === 'hsinchu' || region === 'chiayi') margin = 1.5;
 
   const scoreValues: Record<string, number> = {
     'A++': 9,
@@ -882,8 +895,10 @@ function filterSchools(
         zone = 'target';
       }
 
+      // Subject values are only used after total points and credits are tied.
+      // They are historical admission references, not eligibility rules.
       const shouldCheckMinRequirements =
-        diff === 0 && (!hasCredits || (creditDiff !== null && creditDiff === 0));
+        diff === 0 && hasCredits && totalCredits !== null && creditDiff === 0;
 
       const unmetRequirements = shouldCheckMinRequirements
         ? Object.entries(school.minRequirements)
@@ -907,15 +922,33 @@ function filterSchools(
         diff - creditPenalty - minRequirementPenalty + positiveCreditBonus,
       );
 
+      const pointDifferenceText = Math.abs(diff);
+      const subjectReferenceText = unmetRequirements.length > 0
+        ? `；${unmetRequirements.join('、')}低於歷年錄取參考，錄取風險提高`
+        : '';
+
+      // Keep the copy factual and numerical. "minRequirements" is retained
+      // as a database/API field name, but is presented as a historical
+      // reference rather than a qualification rule.
       const analysisNote = !meetsMinRequirements
-        ? `科目門檻未達：${unmetRequirements.join('、')}，即使總分接近仍建議列為夢幻區。`
-        : creditDiff !== null && diff === 0 && creditDiff < 0
-          ? `總積分相同，但積點少 ${Math.abs(creditDiff)} 點，屬同分比序挑戰。`
-          : diff < 0
-            ? `總積分低 ${Math.abs(diff)} 分，仍屬可挑戰範圍。`
-            : diff === 0
-              ? '總積分與門檻相同，需留意同分比序與實際招生名額變動。'
-              : `總積分高於門檻 ${diff} 分，落點相對穩定。`;
+        ? diff < 0
+          ? `總積分低於參考門檻 ${pointDifferenceText} 分，屬可挑戰範圍${subjectReferenceText}，列為夢幻區。`
+          : diff === 0
+            ? `總積分與積點皆與參考值相同${subjectReferenceText}，列為夢幻區。`
+            : `總積分高於參考門檻 ${pointDifferenceText} 分${subjectReferenceText}，列為夢幻區。`
+        : creditDiff !== null && diff === 0 && creditDiff > 0
+          ? `總積分相同，積點高於參考值 ${creditDiff} 點，同分比序較具優勢。`
+          : creditDiff !== null && diff === 0 && creditDiff < 0
+            ? `總積分相同，積點低於參考值 ${Math.abs(creditDiff)} 點，同分比序風險較高。`
+            : creditDiff !== null && diff === 0 && creditDiff === 0
+              ? '總積分與積點皆與參考值相同，仍須留意超額比序。'
+              : diff < 0
+                ? `總積分低於參考門檻 ${pointDifferenceText} 分，屬可挑戰範圍。`
+                : diff === 0
+                  ? '總積分與參考門檻相同，仍須留意超額比序。'
+                  : zone === 'safe'
+                    ? `總積分高於參考門檻 ${pointDifferenceText} 分，錄取條件相對穩健。`
+                    : `總積分高於參考門檻 ${pointDifferenceText} 分，具備申請競爭力。`;
 
       return {
         ...school,
@@ -1434,6 +1467,7 @@ async function handleAction(payload: Record<string, any>, request: Request) {
         'taipei',
         'tainan',
         'hsinchu',
+        'chiayi',
       ]);
 
       const region = String(school.region || '');
@@ -1727,6 +1761,12 @@ Deno.serve(async (request) => {
     return new Response('ok', { headers: corsHeaders(request) });
   }
   if (request.method !== 'POST') return json(request, { error: 'Method not allowed' }, 405);
+  // CORS preflight is a browser safeguard, not an authorization check. Reject
+  // cross-site POSTs here as well so credentialed requests cannot rely on a
+  // preflight response being enforced by the caller.
+  if (request.headers.get('origin') && !isAllowedOrigin(request)) {
+    return json(request, { error: 'Origin not allowed' }, 403);
+  }
 
   const start = Date.now();
   const path = new URL(request.url).pathname;
