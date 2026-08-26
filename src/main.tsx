@@ -28,6 +28,7 @@ const NewsArticlePage = lazy(() => import('./components/NewsArticlePage.tsx'));
 const MockVolunteerPage = lazy(() => import('./components/MockVolunteerPage.tsx'));
 const SearchPage = lazy(() => import('./components/SearchPage.tsx'));
 const ResultsPage = lazy(() => import('./components/ResultsPage.tsx'));
+const ComparisonPage = lazy(() => import('./components/ComparisonPage.tsx'));
 const ReportErrorPage = lazy(() => import('./components/ReportErrorPage.tsx'));
 const SharedReportPage = lazy(() => import('./components/SharedReportPage.tsx'));
 const SiteMapPage = lazy(() => import('./components/SiteMapPage.tsx'));
@@ -51,7 +52,7 @@ function PageLoading() {
       <section className="relative w-full max-w-sm overflow-hidden rounded-[2rem] border-4 border-slate-900 bg-white shadow-[10px_10px_0px_0px_rgba(15,23,42,1)]">
         <div className="relative overflow-hidden border-b-4 border-slate-900 bg-indigo-500 px-6 py-6 text-white">
           <div className="absolute -right-6 -top-8 h-28 w-28 rounded-full border-4 border-slate-900 bg-amber-300" />
-          <p className="relative text-xs font-black tracking-[0.18em] text-indigo-100">ADMISSION COMPASS</p>
+          <p className="relative text-xs font-black tracking-[0.18em] text-indigo-100">會考落點分析</p>
           <h1 className="relative mt-1 text-xl font-black tracking-tight">正在準備頁面</h1>
         </div>
         <div className="p-6">
@@ -99,6 +100,7 @@ const page =
   path === '/mock-volunteer' ? <MockVolunteerPage /> :
   path === '/search' ? <SearchPage /> :
   path === '/results' ? <ResultsPage /> :
+  path === '/compare' ? <ComparisonPage /> :
   path === '/report-error' ? <ReportErrorPage /> :
   sharedReportToken ? <SharedReportPage token={sharedReportToken} /> :
   path === '/site-map' ? <SiteMapPage /> :
