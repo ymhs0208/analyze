@@ -112,11 +112,11 @@ function corsHeaders(request: Request) {
 }
 
 const MAX_JSON_BODY_BYTES = 64 * 1024;
-const MAX_FORM_BODY_BYTES = 32 * 1024;
 const DEFAULT_RATE_LIMIT = { windowSeconds: 60, maxRequests: 20 };
 const actionRateLimits: Record<string, { windowSeconds: number; maxRequests: number }> = {
   wakeup: { windowSeconds: 60, maxRequests: 10 },
   analyzeScores: { windowSeconds: 60, maxRequests: 8 },
+  analyzeScoreChange: { windowSeconds: 60, maxRequests: 12 },
   validateInvitationCode: { windowSeconds: 60, maxRequests: 10 },
   getVolunteerSchools: { windowSeconds: 60, maxRequests: 20 },
   createSharedReport: { windowSeconds: 60, maxRequests: 10 },
@@ -192,6 +192,8 @@ type EcpayPayload = Record<string, string | number>;
 
 const ecpayUrlEncode = (value: string) => encodeURIComponent(value)
   .replace(/%20/g, '+')
+  .replace(/~/g, '%7e')
+  .replace(/'/g, '%27')
   .replace(/%2D/g, '-')
   .replace(/%5F/g, '_')
   .replace(/%2E/g, '.')
@@ -216,10 +218,17 @@ const ecpayCheckMacValue = async (params: EcpayPayload, hashKey: string, hashIv:
 };
 
 const ecpayConfig = () => {
+  const mode = Deno.env.get('ECPAY_MODE')?.trim().toLowerCase() || 'production';
+  if (mode !== 'production') {
+    // This shared function is deployed only for live payments. Testing must
+    // use a separate Supabase project/function, so a mistaken environment
+    // variable can never make publicly known ECPay test credentials trusted.
+    throw new Error('ECPAY_MODE must be production.');
+  }
   const merchantId = Deno.env.get('ECPAY_MERCHANT_ID')?.trim();
   const hashKey = Deno.env.get('ECPAY_HASH_KEY')?.trim();
   const hashIv = Deno.env.get('ECPAY_HASH_IV')?.trim();
-  const mode = Deno.env.get('ECPAY_MODE')?.trim().toLowerCase() || 'production';
+
   const returnUrl = Deno.env.get('ECPAY_RETURN_URL')?.trim() || `${supabaseUrl}/functions/v1/ecpay-callback`;
   const clientBackUrl = Deno.env.get('ECPAY_CLIENT_BACK_URL')?.trim() || 'https://tyctw.github.io/spare/support/success';
 
@@ -231,9 +240,57 @@ const ecpayConfig = () => {
     mode,
     returnUrl,
     clientBackUrl,
-    actionUrl: mode === 'stage' ? 'https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5' : 'https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5',
+    actionUrl: 'https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5',
+    queryActionUrl: 'https://payment.ecpay.com.tw/Cashier/QueryTradeInfo/V5',
   };
 };
+
+const ECPAY_RECONCILIATION_DELAY_MS = 10 * 60 * 1000;
+
+function secureEqual(left: string, right: string) {
+  if (left.length !== right.length) return false;
+  let difference = 0;
+  for (let index = 0; index < left.length; index += 1) difference |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  return difference === 0;
+}
+
+function taipeiMerchantTradeDate(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+  }).formatToParts(date);
+  const value = (type: string) => parts.find((part) => part.type === type)?.value || '';
+  return `${value('year')}/${value('month')}/${value('day')} ${value('hour')}:${value('minute')}:${value('second')}`;
+}
+
+async function queryEcpayTradeInfo(config: ReturnType<typeof ecpayConfig>, merchantTradeNo: string) {
+  const requestFields: EcpayPayload = {
+    MerchantID: config.merchantId,
+    MerchantTradeNo: merchantTradeNo,
+    TimeStamp: Math.floor(Date.now() / 1000),
+  };
+  const checkMacValue = await ecpayCheckMacValue(requestFields, config.hashKey, config.hashIv);
+  const form = new URLSearchParams();
+  for (const [key, value] of Object.entries({ ...requestFields, CheckMacValue: checkMacValue })) form.set(key, String(value));
+
+  const response = await withTimeout(fetch(config.queryActionUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: form.toString(),
+  }), 8_000, 'query ECPay trade');
+  const responseText = await withTimeout(response.text(), 3_000, 'read ECPay trade query');
+  if (!response.ok) throw new Error(`ECPay trade query returned HTTP ${response.status}.`);
+
+  const fields = Object.fromEntries(new URLSearchParams(responseText).entries());
+  const receivedCheckMacValue = fields.CheckMacValue || '';
+  const expectedCheckMacValue = await ecpayCheckMacValue(fields, config.hashKey, config.hashIv);
+  if (!secureEqual(receivedCheckMacValue.toUpperCase(), expectedCheckMacValue)
+    || fields.MerchantID !== config.merchantId
+    || fields.MerchantTradeNo !== merchantTradeNo) {
+    throw new Error('ECPay trade query verification failed.');
+  }
+  return fields;
+}
 
 const createMerchantTradeNo = () => `SP${Date.now()}${crypto.getRandomValues(new Uint16Array(1))[0].toString(36).toUpperCase()}`.slice(0, 20);
 const createMembershipTradeNo = () => `MB${Date.now()}${crypto.getRandomValues(new Uint16Array(1))[0].toString(36).toUpperCase()}`.slice(0, 20);
@@ -265,7 +322,7 @@ async function getLineLoginSession(token: unknown) {
 }
 
 const lineSessionCookieName = 'line_membership_session';
-const lineSessionCookie = (token: string, maxAge = 15 * 60) =>
+const lineSessionCookie = (token: string, maxAge = 24 * 60 * 60) =>
   `${lineSessionCookieName}=${encodeURIComponent(token)}; HttpOnly; Secure; SameSite=None; Partitioned; Path=/functions/v1/backend; Max-Age=${maxAge}`;
 const supportPaymentStatusCookieName = 'support_payment_status';
 const supportPaymentStatusCookie = (token: string, maxAge = 24 * 60 * 60) =>
@@ -293,9 +350,11 @@ async function activeMembershipForRequest(request: Request) {
   const lineSession = await getLineLoginSession(lineSessionTokenFromCookie(request));
   if (!lineSession) return null;
 
+  await reconcilePendingMembershipPayment(lineSession.line_user_id);
+
   const { data, error } = await supabase
     .from('membership_payments')
-    .select('plan, expires_at')
+    .select('plan, expires_at, contact_email')
     .eq('status', 'paid')
     .gt('expires_at', new Date().toISOString())
     .eq('line_user_id', lineSession.line_user_id)
@@ -329,6 +388,58 @@ async function withTimeout<T>(
     return await Promise.race([Promise.resolve(promise), timeout]);
   } finally {
     clearTimeout(timer!);
+  }
+}
+
+async function reconcilePendingMembershipPayment(lineUserId: string) {
+  const reconciliationBefore = new Date(Date.now() - ECPAY_RECONCILIATION_DELAY_MS).toISOString();
+  const { data: pendingPayment, error } = await supabase
+    .from('membership_payments')
+    .select('merchant_trade_no, amount')
+    .eq('line_user_id', lineUserId)
+    .eq('status', 'pending')
+    .lt('created_at', reconciliationBefore)
+    .lt('updated_at', reconciliationBefore)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!pendingPayment) return;
+
+  // Claim this reconciliation attempt first. This prevents page refreshes or
+  // parallel tabs from repeatedly calling QueryTradeInfo for the same order.
+  const { data: claimedPayment, error: claimError } = await supabase
+    .from('membership_payments')
+    .update({ updated_at: new Date().toISOString() })
+    .eq('merchant_trade_no', pendingPayment.merchant_trade_no)
+    .eq('status', 'pending')
+    .lt('updated_at', reconciliationBefore)
+    .select('merchant_trade_no, amount')
+    .maybeSingle();
+  if (claimError) throw claimError;
+  if (!claimedPayment) return;
+
+  try {
+    const fields = await queryEcpayTradeInfo(ecpayConfig(), claimedPayment.merchant_trade_no);
+    const tradeAmount = Number(fields.TradeAmt);
+    const tradeNo = fields.TradeNo || '';
+    if (fields.TradeStatus !== '1') return;
+    if (!Number.isSafeInteger(tradeAmount) || tradeAmount !== claimedPayment.amount || !tradeNo) {
+      throw new Error('ECPay membership reconciliation returned inconsistent trade data.');
+    }
+    const { error: settlementError } = await supabase.rpc('settle_membership_payment', {
+      p_merchant_trade_no: claimedPayment.merchant_trade_no,
+      p_ecpay_trade_no: tradeNo,
+      p_payment_type: fields.PaymentType || null,
+      p_callback_payload: { reconciliation: fields },
+      p_paid_at: new Date().toISOString(),
+      p_target_status: 'paid',
+    });
+    if (settlementError) throw settlementError;
+  } catch (reconciliationError) {
+    // The payment remains pending and can be retried after the cooldown. Do
+    // not surface provider details to the browser or write payment data to logs.
+    console.error('Membership payment reconciliation failed', { merchantTradeNo: claimedPayment.merchant_trade_no });
   }
 }
 
@@ -576,43 +687,6 @@ async function requireAdmin(request: Request) {
   return user;
 }
 
-// Retained temporarily only to keep the historical source diff small. No
-// privileged route calls this function; all routes below use requireAdmin().
-async function validateAdminCode(code: unknown, request: Request) {
-  const adminCode = Deno.env.get('ADMIN_ACCESS_CODE')?.trim();
-  const requestedCode = String(code || '').trim();
-
-  // Admin access must never fall back to an invitation code. Invitation codes
-  // grant end-user access only; using one here would let a public code control
-  // privileged school-management actions when this secret is misconfigured.
-  if (!adminCode) {
-    console.error('ADMIN_ACCESS_CODE is not configured; refusing admin access.');
-    throw new Error('管理功能尚未完成安全設定');
-  }
-
-  const valid = requestedCode.length > 0 && requestedCode === adminCode;
-
-  background(
-    withTimeout(
-      supabase.from('invitation_logs').insert({
-        action: 'admin',
-        invitation_code: requestedCode ? '[admin-code]' : null,
-        success: valid,
-        ip: clientAddress(request),
-        user_agent: request.headers.get('user-agent'),
-      }),
-      2000,
-      'insert admin log',
-    ),
-  );
-
-  return valid;
-}
-
-function assertAdmin(valid: boolean) {
-  if (!valid) throw new Error('管理驗證碼無效或已過期');
-}
-
 function nullableNumber(value: unknown) {
   if (value === null || value === undefined || value === '') return null;
   const number = Number(value);
@@ -804,6 +878,31 @@ function calculateScores(region: string, scores: Scores): ScoreResult {
   }
 
   throw new Error(`無效的地區指定: ${region}`);
+}
+
+const gradeSteps = ['C', 'B', 'B+', 'B++', 'A', 'A+', 'A++'];
+
+function adjacentGrade(grade: string, direction: 1 | -1) {
+  const index = gradeSteps.indexOf(grade);
+  const target = index + direction;
+  return index >= 0 && target >= 0 && target < gradeSteps.length ? gradeSteps[target] : null;
+}
+
+function analyzedSchoolKey(school: AnalyzedSchool) {
+  return [school.name, school.district || '', school.type || '', school.group || ''].join('|');
+}
+
+function scoreChangeSummary(school: AnalyzedSchool) {
+  return {
+    name: school.name,
+    district: school.district,
+    type: school.type,
+    group: school.group,
+    zone: school.zone,
+    points: school.points,
+    pointsDiff: school.pointsDiff,
+    creditDiff: school.creditDiff,
+  };
 }
 
 function filterSchools(
@@ -1124,8 +1223,7 @@ async function handleAction(payload: Record<string, any>, request: Request) {
 
       const config = ecpayConfig();
       const merchantTradeNo = createMerchantTradeNo();
-      const now = new Date();
-      const merchantTradeDate = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+      const merchantTradeDate = taipeiMerchantTradeDate();
       const fields: EcpayPayload = {
         MerchantID: config.merchantId,
         MerchantTradeNo: merchantTradeNo,
@@ -1174,13 +1272,60 @@ async function handleAction(payload: Record<string, any>, request: Request) {
 
       const { data, error } = await supabase
         .from('support_payments')
-        .select('status, amount')
+        .select('status, amount, created_at, updated_at')
         .eq('merchant_trade_no', merchantTradeNo)
         .eq('status_lookup_token', statusLookupToken)
         .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
         .maybeSingle();
       if (error) throw error;
-      return data || { status: 'not_found' };
+      if (!data || data.status !== 'pending') return data || { status: 'not_found' };
+
+      const reconciliationBefore = new Date(Date.now() - ECPAY_RECONCILIATION_DELAY_MS).toISOString();
+      if (data.created_at >= reconciliationBefore || data.updated_at >= reconciliationBefore) return data;
+
+      const { data: claimedPayment, error: claimError } = await supabase
+        .from('support_payments')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('merchant_trade_no', merchantTradeNo)
+        .eq('status_lookup_token', statusLookupToken)
+        .eq('status', 'pending')
+        .lt('updated_at', reconciliationBefore)
+        .select('amount')
+        .maybeSingle();
+      if (claimError) throw claimError;
+      if (!claimedPayment) return data;
+
+      try {
+        const fields = await queryEcpayTradeInfo(ecpayConfig(), merchantTradeNo);
+        const tradeAmount = Number(fields.TradeAmt);
+        const tradeNo = fields.TradeNo || '';
+        if (fields.TradeStatus !== '1') return data;
+        if (!Number.isSafeInteger(tradeAmount) || tradeAmount !== claimedPayment.amount || !tradeNo) {
+          throw new Error('ECPay support reconciliation returned inconsistent trade data.');
+        }
+        const { data: settledPayment, error: settlementError } = await supabase
+          .from('support_payments')
+          .update({
+            status: 'paid',
+            ecpay_trade_no: tradeNo,
+            payment_type: fields.PaymentType || null,
+            paid_at: new Date().toISOString(),
+            callback_payload: { reconciliation: fields },
+            updated_at: new Date().toISOString(),
+          })
+          .eq('merchant_trade_no', merchantTradeNo)
+          .eq('status_lookup_token', statusLookupToken)
+          .eq('status', 'pending')
+          .select('status, amount')
+          .maybeSingle();
+        if (settlementError) throw settlementError;
+        return settledPayment || data;
+      } catch {
+        // Keep the public response intentionally generic. The claimed attempt
+        // is retried only after the cooldown to respect ECPay query limits.
+        console.error('Support payment reconciliation failed', { merchantTradeNo });
+        return data;
+      }
     }
 
     case 'createMembershipPayment': {
@@ -1190,10 +1335,21 @@ async function handleAction(payload: Record<string, any>, request: Request) {
       const lineSession = await getLineLoginSession(lineSessionTokenFromCookie(request));
       if (!lineSession) throw new Error('LINE login is required before purchasing membership.');
 
+      const contactEmail = String(payload.email || '').trim().toLowerCase();
+      const payerName = String(payload.payerName || '').trim().replace(/\s+/g, ' ');
+      if (!payerName || payerName.length > 80) {
+        throw new Error('請填寫付款人姓名（最多 80 個字）。');
+      }
+      if (!contactEmail) {
+        throw new Error('請填寫聯絡信箱。');
+      }
+      if (contactEmail.length > 254 || !contactEmail.includes('@')) {
+        throw new Error('信箱格式不正確。');
+      }
+
       const config = ecpayConfig();
       const merchantTradeNo = createMembershipTradeNo();
-      const now = new Date();
-      const merchantTradeDate = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+      const merchantTradeDate = taipeiMerchantTradeDate();
       const memberBackUrl = Deno.env.get('ECPAY_MEMBERSHIP_CLIENT_BACK_URL')?.trim()
         || config.clientBackUrl.replace(/\/support\/success(?:\?.*)?$/, '/membership/success');
       const fields: EcpayPayload = {
@@ -1214,7 +1370,7 @@ async function handleAction(payload: Record<string, any>, request: Request) {
       const checkMacValue = await ecpayCheckMacValue(fields, config.hashKey, config.hashIv);
       const { data, error } = await supabase
         .from('membership_payments')
-        .insert({ merchant_trade_no: merchantTradeNo, plan: planId, amount: plan.amount, line_user_id: lineSession.line_user_id })
+        .insert({ merchant_trade_no: merchantTradeNo, plan: planId, amount: plan.amount, line_user_id: lineSession.line_user_id, payer_name: payerName, contact_email: contactEmail })
         .select('id')
         .single();
       if (error || !data?.id) throw error || new Error('Could not create membership payment.');
@@ -1223,7 +1379,7 @@ async function handleAction(payload: Record<string, any>, request: Request) {
 
     case 'getMembershipStatus': {
       const data = await activeMembershipForRequest(request);
-      return data ? { active: true, plan: data.plan, expiresAt: data.expires_at } : { active: false };
+      return data ? { active: true, plan: data.plan, expiresAt: data.expires_at, contactEmail: data.contact_email ?? null } : { active: false };
     }
 
     case 'getMembershipPurchaseHistory': {
@@ -1247,6 +1403,36 @@ async function handleAction(payload: Record<string, any>, request: Request) {
           createdAt: payment.created_at,
         })),
       };
+    }
+
+    case 'updateMembershipEmail': {
+      const lineSession = await getLineLoginSession(lineSessionTokenFromCookie(request));
+      if (!lineSession) throw new Error('LINE login is required.');
+      const contactEmail = String(payload.email || '').trim().toLowerCase();
+      if (!contactEmail) {
+        throw new Error('請填寫聯絡信箱。');
+      }
+      if (contactEmail.length > 254 || !contactEmail.includes('@')) {
+        throw new Error('信箱格式不正確。');
+      }
+      // Update the most recent active paid membership for this LINE user.
+      const { data: payment, error: findError } = await supabase
+        .from('membership_payments')
+        .select('id')
+        .eq('line_user_id', lineSession.line_user_id)
+        .eq('status', 'paid')
+        .gt('expires_at', new Date().toISOString())
+        .order('expires_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (findError) throw findError;
+      if (!payment) return { updated: false, reason: 'NO_ACTIVE_MEMBERSHIP' };
+      const { error: updateError } = await supabase
+        .from('membership_payments')
+        .update({ contact_email: contactEmail, updated_at: new Date().toISOString() })
+        .eq('id', payment.id);
+      if (updateError) throw updateError;
+      return { updated: true, contactEmail };
     }
 
     case 'getLineLoginSession': {
@@ -1294,6 +1480,7 @@ async function handleAction(payload: Record<string, any>, request: Request) {
     case 'createSharedReport': {
       const kind = String(payload.kind || '');
       const report = payload.payload;
+      const requestedPermanentLink = kind === 'volunteer' && payload.persistent === true;
       if (kind !== 'analysis' && kind !== 'volunteer') throw new Error('Invalid shared report type.');
       if (!report || typeof report !== 'object' || Array.isArray(report)) throw new Error('Invalid shared report content.');
       if (kind === 'analysis' && (!report.results || typeof report.results !== 'object')) {
@@ -1308,17 +1495,28 @@ async function handleAction(payload: Record<string, any>, request: Request) {
       const encodedPayload = JSON.stringify(report);
       if (encodedPayload.length > 150_000) throw new Error('Shared report is too large.');
 
+      // Only an active member may create a no-expiry volunteer-list link.
+      // Do not trust the client flag: membership is checked again here, where
+      // the HttpOnly LINE session cookie is available.
+      if (requestedPermanentLink && !await activeMembershipForRequest(request)) {
+        throw new Error('An active membership is required for a permanent sharing link.');
+      }
+
+      const sharedReport = requestedPermanentLink
+        ? { kind, payload: report, expires_at: null }
+        : { kind, payload: report };
+
       const { data, error } = await withTimeout(
         supabase
           .from('shared_reports')
-          .insert({ kind, payload: report })
-          .select('token')
+          .insert(sharedReport)
+          .select('token, expires_at')
           .single(),
         5000,
         'create shared report',
       );
       if (error) throw error;
-      return { token: data.token };
+      return { token: data.token, expiresAt: data.expires_at };
     }
 
     case 'getSharedReport': {
@@ -1331,13 +1529,14 @@ async function handleAction(payload: Record<string, any>, request: Request) {
           .from('shared_reports')
           .select('kind, payload, expires_at')
           .eq('token', token)
-          .gt('expires_at', new Date().toISOString())
           .maybeSingle(),
         5000,
         'load shared report',
       );
       if (error) throw error;
-      if (!data) throw new Error('This shared report has expired or is unavailable.');
+      if (!data || (data.expires_at && new Date(data.expires_at).getTime() <= Date.now())) {
+        throw new Error('This shared report has expired or is unavailable.');
+      }
       return { kind: data.kind, payload: data.payload, expiresAt: data.expires_at };
     }
 
@@ -1654,115 +1853,78 @@ async function handleAction(payload: Record<string, any>, request: Request) {
       };
     }
 
+    case 'analyzeScoreChange': {
+      // Hypothetical results are calculated server-side with the same data and
+      // filters as the main analysis. The active-membership check must remain
+      // here rather than relying on a front-end lock.
+      if (!await activeMembershipForRequest(request)) {
+        throw new Error('An active membership is required for score-change analysis.');
+      }
+      assertScores(payload.scores);
+      const region = String(payload.region || '');
+      const subject = String(payload.subject || '');
+      const direction = payload.direction === 'increase' ? 1 : payload.direction === 'decrease' ? -1 : 0;
+      const originalScores = { ...payload.scores } as Scores;
+      const changedScores = { ...originalScores };
+      let label = '';
+      const subjectLabels: Record<string, string> = {
+        chinese: '國文', english: '英文', math: '數學', science: '自然', social: '社會', composition: '作文',
+      };
+
+      if (!direction || !subjectLabels[subject]) throw new Error('Invalid score-change scenario.');
+      if (subject === 'composition') {
+        const next = originalScores.composition + direction;
+        if (next < 0 || next > 6) throw new Error(`作文已達可調整範圍的${direction > 0 ? '上限' : '下限'}。`);
+        changedScores.composition = next;
+        label = `作文 ${originalScores.composition} → ${next}`;
+      } else {
+        const next = adjacentGrade(String(originalScores[subject as keyof Scores]), direction as 1 | -1);
+        if (!next) throw new Error(`${subjectLabels[subject]}已達可調整範圍的${direction > 0 ? '上限' : '下限'}。`);
+        changedScores[subject as keyof Scores] = next as never;
+        label = `${subjectLabels[subject]} ${originalScores[subject as keyof Scores]} → ${next}`;
+      }
+
+      const rows = await cached(cacheKey(['schools', region]), SCHOOL_CACHE_TTL_MS, async () => {
+        const { data, error } = await withTimeout(
+          supabase
+            .from('schools')
+            .select('region, name, district, points, credits, historical_scores, type, ownership, vocational_group, min_chinese, min_english, min_math, min_science, min_social, min_composition, admission_quota, admission_quota_source_url')
+            .eq('region', region),
+          5000,
+          'load schools for score-change analysis',
+        );
+        if (error) throw error;
+        return (data || []) as SchoolRow[];
+      });
+      const filters = (payload.filters || {}) as Filters;
+      const beforeCalculated = calculateScores(region, originalScores);
+      const before = filterSchools(rows, beforeCalculated.totalPoints, beforeCalculated.totalCredits, filters, originalScores, region);
+      const afterCalculated = calculateScores(region, changedScores);
+      const after = filterSchools(rows, afterCalculated.totalPoints, afterCalculated.totalCredits, filters, changedScores, region);
+      const beforeKeys = new Set(before.map(analyzedSchoolKey));
+      const afterKeys = new Set(after.map(analyzedSchoolKey));
+      const beforeByKey = new Map(before.map((school) => [analyzedSchoolKey(school), school]));
+      const zoneChanges = after
+        .flatMap((school) => {
+          const previous = beforeByKey.get(analyzedSchoolKey(school));
+          if (!previous || previous.zone === school.zone) return [];
+          return [{ ...scoreChangeSummary(school), fromZone: previous.zone, toZone: school.zone }];
+        })
+        .slice(0, 30);
+
+      return {
+        label,
+        before: { totalPoints: beforeCalculated.totalPoints, totalCredits: beforeCalculated.totalCredits, count: before.length },
+        after: { totalPoints: afterCalculated.totalPoints, totalCredits: afterCalculated.totalCredits, count: after.length },
+        added: after.filter((school) => !beforeKeys.has(analyzedSchoolKey(school))).slice(0, 30).map(scoreChangeSummary),
+        removed: before.filter((school) => !afterKeys.has(analyzedSchoolKey(school))).slice(0, 30).map(scoreChangeSummary),
+        zoneChanges,
+      };
+    }
+
     default:
       throw new Error('不支援的後端操作');
   }
-}
-
-async function handleEcpayCallback(request: Request) {
-  const config = ecpayConfig();
-  const body = await readRequestText(request, MAX_FORM_BODY_BYTES);
-  const fields = Object.fromEntries(new URLSearchParams(body).entries());
-  const receivedCheckMacValue = fields.CheckMacValue;
-  const expectedCheckMacValue = await ecpayCheckMacValue(fields, config.hashKey, config.hashIv);
-
-  if (!receivedCheckMacValue || receivedCheckMacValue !== expectedCheckMacValue) {
-    console.error('Invalid ECPay CheckMacValue', { merchantTradeNo: fields.MerchantTradeNo });
-    return new Response('0|Error', { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-  }
-
-  const merchantTradeNo = fields.MerchantTradeNo || '';
-  const tradeNo = fields.TradeNo || '';
-  const tradeAmount = Number(fields.TradeAmt);
-
-  if (fields.MerchantID !== config.merchantId || !/^[A-Za-z0-9]{8,32}$/.test(merchantTradeNo)) {
-    console.error('Invalid ECPay merchant or order reference', { merchantId: fields.MerchantID, merchantTradeNo });
-    return new Response('0|Error', { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-  }
-
-  if (!Number.isSafeInteger(tradeAmount) || tradeAmount <= 0) {
-    console.error('Invalid ECPay payment amount', { merchantTradeNo, tradeAmount: fields.TradeAmt });
-    return new Response('0|Error', { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-  }
-
-  if (!tradeNo) {
-    console.error('Missing ECPay trade number', { merchantTradeNo });
-    return new Response('0|Error', { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-  }
-
-  const { data: payment, error: paymentError } = await supabase
-    .from('support_payments')
-    .select('amount, status, ecpay_trade_no')
-    .eq('merchant_trade_no', merchantTradeNo)
-    .maybeSingle();
-
-  if (paymentError || !payment) {
-    console.error('Unknown ECPay order', { merchantTradeNo, error: paymentError });
-    return new Response('0|Error', { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-  }
-
-  if (payment.amount !== tradeAmount) {
-    console.error('ECPay payment amount mismatch', { merchantTradeNo, expectedAmount: payment.amount, tradeAmount });
-    return new Response('0|Error', { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-  }
-
-  const succeeded = fields.RtnCode === '1';
-  const simulated = fields.SimulatePaid === '1';
-  const targetStatus = succeeded ? 'paid' : 'failed';
-
-  // Simulated payments are useful only against ECPay's stage environment. They
-  // must never mark a production donation as settled.
-  if (simulated && config.mode !== 'stage') {
-    console.warn('Ignored simulated ECPay payment outside stage mode', { merchantTradeNo });
-    return new Response('1|OK', { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-  }
-
-  // A duplicate callback for the same ECPay trade is safe and acknowledged.
-  if (payment.status !== 'pending' && payment.ecpay_trade_no === tradeNo) {
-    return new Response('1|OK', { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-  }
-
-  if (payment.status !== 'pending') {
-    console.error('Invalid ECPay payment state transition', { merchantTradeNo, status: payment.status, tradeNo });
-    return new Response('0|Error', { status: 409, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-  }
-
-  const { data: updatedPayment, error } = await supabase
-    .from('support_payments')
-    .update({
-      status: targetStatus,
-      ecpay_trade_no: tradeNo,
-      payment_type: fields.PaymentType || null,
-      paid_at: succeeded ? new Date().toISOString() : null,
-      callback_payload: fields,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('merchant_trade_no', merchantTradeNo)
-    .eq('status', 'pending')
-    .select('status, ecpay_trade_no')
-    .maybeSingle();
-
-  if (error) {
-    console.error('Could not record ECPay callback', error);
-    return new Response('0|Error', { status: 500, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-  }
-
-  if (!updatedPayment) {
-    // Another delivery may have completed the same pending order first. Only
-    // acknowledge it when it resulted in the exact same ECPay transaction.
-    const { data: currentPayment, error: currentPaymentError } = await supabase
-      .from('support_payments')
-      .select('status, ecpay_trade_no')
-      .eq('merchant_trade_no', merchantTradeNo)
-      .maybeSingle();
-
-    if (currentPaymentError || currentPayment?.status !== targetStatus || currentPayment.ecpay_trade_no !== tradeNo) {
-      console.error('Could not safely reconcile ECPay callback', { merchantTradeNo, tradeNo, currentPaymentError });
-      return new Response('0|Error', { status: 409, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-    }
-  }
-
-  return new Response('1|OK', { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
 }
 
 Deno.serve(async (request) => {
@@ -1771,10 +1933,11 @@ Deno.serve(async (request) => {
     return new Response('ok', { headers: corsHeaders(request) });
   }
   if (request.method !== 'POST') return json(request, { error: 'Method not allowed' }, 405);
-  // CORS preflight is a browser safeguard, not an authorization check. Reject
-  // cross-site POSTs here as well so credentialed requests cannot rely on a
-  // preflight response being enforced by the caller.
-  if (request.headers.get('origin') && !isAllowedOrigin(request)) {
+  // The API is browser-only. Requiring an explicit allowlisted Origin on every
+  // POST prevents cross-site form/navigation requests from using the
+  // SameSite=None session cookies when a caller omits the Origin header.
+  // ECPay server callbacks use their separate ecpay-callback function.
+  if (!isAllowedOrigin(request)) {
     return json(request, { error: 'Origin not allowed' }, 403);
   }
 
