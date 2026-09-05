@@ -12,7 +12,6 @@ import {
   LockKeyhole,
   LogIn,
   Mail,
-  MonitorSmartphone,
   ReceiptText,
   Sparkles,
   X,
@@ -171,6 +170,10 @@ export default function MembershipPage() {
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState("");
   const [lineName, setLineName] = useState("");
+  const [payerName, setPayerName] = useState("");
+  const [payerNameError, setPayerNameError] = useState("");
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
   const selectedPlan = useMemo(
     () => plans.find((plan) => plan.id === selected)!,
     [selected],
@@ -202,6 +205,37 @@ export default function MembershipPage() {
       cancelled = true;
     };
   }, []);
+
+  // When the user returns from the ECPay payment page to /membership/success,
+  // the server-to-server callback and the browser redirect race each other.
+  // Poll until the membership turns active (or we exhaust retries) so the
+  // user sees a "confirming payment…" state instead of a stale inactive view.
+  const isSuccessPage = window.location.pathname.endsWith('/membership/success');
+  useEffect(() => {
+    if (!isSuccessPage) return;
+    if (membership === null) return; // still loading initial check
+    if (membership.active) return;  // already confirmed, no polling needed
+
+    let attempts = 0;
+    const MAX_ATTEMPTS = 8;
+    const INTERVAL_MS = 2500;
+
+    const id = setInterval(async () => {
+      attempts += 1;
+      try {
+        const status = await getMembershipStatus();
+        if (status.active) {
+          setMembership(status);
+          clearInterval(id);
+        }
+      } catch {
+        // network hiccup — keep polling until exhausted
+      }
+      if (attempts >= MAX_ATTEMPTS) clearInterval(id);
+    }, INTERVAL_MS);
+
+    return () => clearInterval(id);
+  }, [isSuccessPage, membership === null, membership?.active]);
 
   useEffect(() => {
     const handlePageShow = (event: PageTransitionEvent) => {
@@ -237,6 +271,22 @@ export default function MembershipPage() {
   };
 
   const checkout = async () => {
+    setPayerNameError("");
+    setEmailError("");
+    const trimmedPayerName = payerName.trim().replace(/\s+/g, " ");
+    const trimmedEmail = email.trim();
+    if (!trimmedPayerName) {
+      setPayerNameError("請填寫付款人姓名。");
+      return;
+    }
+    if (!trimmedEmail) {
+      setEmailError("請填寫聯絡信箱。");
+      return;
+    }
+    if (!trimmedEmail.includes("@")) {
+      setEmailError("請輸入正確的信箱格式。");
+      return;
+    }
     setSubmitting(true);
     setNotice("");
     try {
@@ -246,6 +296,8 @@ export default function MembershipPage() {
       }>({
         action: "createMembershipPayment",
         plan: selected,
+        payerName: trimmedPayerName,
+        email: trimmedEmail || undefined,
       });
       const form = document.createElement("form");
       form.method = "post";
@@ -288,6 +340,33 @@ export default function MembershipPage() {
               <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-emerald-500 text-xs font-black text-white">1</span><div className="min-w-0 flex-1"><p className="text-sm font-black">確認 LINE 安全工作階段</p><p className="text-xs font-bold text-emerald-700">已啟動安全驗證</p></div><Check className="h-5 w-5 text-emerald-600" /></div>
               <div role="status" aria-live="polite" className="flex items-center gap-3 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3"><span aria-hidden="true" className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-indigo-600 text-xs font-black text-white">2</span><div className="min-w-0 flex-1"><p className="text-sm font-black">查詢免廣告資格</p><p className="text-xs font-bold text-indigo-700">正在確認方案與有效期限</p></div><span aria-hidden="true" className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" /></div>
               <p className="px-1 pt-1 text-center text-xs font-bold leading-5 text-slate-500">登入憑證不會儲存在網址或瀏覽器儲存空間。</p>
+            </div>
+          </article>
+        </section>
+      </main>
+    );
+
+  if (isSuccessPage && membership !== null && !membership.active)
+    return (
+      <main id="main-content" aria-busy="true" aria-labelledby="payment-confirming-title" className="min-h-screen overflow-hidden bg-[#f5f6ff] px-4 py-7 text-slate-900 sm:px-6 sm:py-12">
+        <div aria-hidden="true" className="fixed -left-24 top-20 h-64 w-64 rounded-full bg-emerald-200/60 blur-3xl" />
+        <div aria-hidden="true" className="fixed -right-20 bottom-0 h-72 w-72 rounded-full bg-sky-200/60 blur-3xl" />
+        <section className="relative mx-auto max-w-lg">
+          <a href={withBasePath("/")} className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black shadow-[3px_3px_0_#161b35] transition-all hover:-translate-y-0.5 active:translate-y-0 active:shadow-none"><ArrowRight className="h-4 w-4 rotate-180" />回到落點分析</a>
+          <article className="relative mt-6 overflow-hidden rounded-[2rem] border-2 border-slate-900 bg-white shadow-[7px_7px_0_#161b35]">
+            <div aria-hidden="true" className="absolute -right-10 -top-12 h-36 w-36 rounded-full border-[15px] border-emerald-100" />
+            <div className="relative border-b-2 border-slate-900 bg-emerald-100 px-6 py-5 sm:px-8">
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-[11px] font-black tracking-[.14em] text-emerald-700"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />PAYMENT CONFIRMING</span>
+              <div className="mt-4 flex items-center gap-4">
+                <div aria-hidden="true" className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border-2 border-slate-900 bg-white text-emerald-700 shadow-[2px_2px_0_#161b35]"><Crown className="h-6 w-6 fill-amber-300" /></div>
+                <div><h1 id="payment-confirming-title" className="text-2xl font-black tracking-tight sm:text-3xl">付款確認中</h1><p className="mt-1 text-sm font-bold text-slate-600">正在等待付款系統回傳結果，請稍候⋯</p></div>
+              </div>
+            </div>
+            <div role="status" aria-live="polite" className="relative space-y-3 p-5 sm:p-6">
+              <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-emerald-500 text-xs font-black text-white">1</span><div className="min-w-0 flex-1"><p className="text-sm font-black">付款已送出</p><p className="text-xs font-bold text-emerald-700">我們已收到付款指示</p></div><Check className="h-5 w-5 text-emerald-600" /></div>
+              <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"><span aria-hidden="true" className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-amber-400 text-xs font-black text-white">2</span><div className="min-w-0 flex-1"><p className="text-sm font-black">等待付款機構確認</p><p className="text-xs font-bold text-amber-700">正在與綠界確認交易結果</p></div><span aria-hidden="true" className="h-5 w-5 animate-spin rounded-full border-2 border-amber-200 border-t-amber-500" /></div>
+              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 opacity-50"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-slate-300 text-xs font-black text-white">3</span><div className="min-w-0 flex-1"><p className="text-sm font-black">啟用免廣告會員資格</p><p className="text-xs font-bold text-slate-500">確認後立即生效</p></div></div>
+              <p className="px-1 pt-1 text-center text-xs font-bold leading-5 text-slate-500">若付款已完成但此頁超過 30 秒仍未更新，請重新整理或來信客服確認。</p>
             </div>
           </article>
         </section>
@@ -363,14 +442,6 @@ export default function MembershipPage() {
 
   return (
     <main id="main-content" aria-labelledby="membership-page-title" className="min-h-screen overflow-hidden bg-[#f5f6ff] px-4 py-5 text-slate-900 sm:px-6 sm:py-10">
-      <div
-        aria-hidden="true"
-        className="fixed -left-40 top-24 h-96 w-96 rounded-full bg-sky-200/60 blur-3xl"
-      />
-      <div
-        aria-hidden="true"
-        className="fixed -right-36 top-0 h-[32rem] w-[32rem] rounded-full bg-amber-200/60 blur-3xl"
-      />
       <section className="relative mx-auto max-w-6xl">
         <nav aria-label="會員頁面導覽" className="flex items-center justify-between">
           <a
@@ -386,7 +457,7 @@ export default function MembershipPage() {
           </span>
         </nav>
         <div className="mt-6 grid gap-4 lg:grid-cols-[1.12fr_.88fr]">
-          <section className="relative overflow-hidden rounded-[2.5rem] border-2 border-slate-900 bg-violet-100 p-5 text-slate-900 shadow-[6px_6px_0_#161b35] sm:p-6">
+          <section className="relative overflow-hidden rounded-[2.5rem] border-2 border-slate-900 bg-violet-100 p-5 text-slate-900 shadow-[4px_4px_0_#161b35] sm:p-6">
             <div
               aria-hidden="true"
               className="absolute -right-12 -top-16 h-48 w-48 rounded-full border-[14px] border-violet-300/70"
@@ -424,11 +495,11 @@ export default function MembershipPage() {
                 </li>
                 <li className="flex items-start gap-3 rounded-2xl border border-violet-200 bg-white/80 p-4">
                   <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
-                    <MonitorSmartphone className="h-4 w-4" />
+                    <Sparkles className="h-4 w-4" />
                   </span>
                   <div>
-                    <p className="text-sm font-black">跨裝置找回資格</p>
-                    <p className="mt-1 text-xs font-bold leading-5 text-slate-600">資格綁定 LINE，手機、電腦、平板都能直接確認。</p>
+                    <p className="text-sm font-black">一分改變分析</p>
+                    <p className="mt-1 text-xs font-bold leading-5 text-slate-600">任選六科提高或降低一級，查看可能增減的校科選擇。</p>
                   </div>
                 </li>
                 <li className="flex items-start gap-3 rounded-2xl border border-violet-200 bg-white/80 p-4">
@@ -443,13 +514,13 @@ export default function MembershipPage() {
               </ul>
             </div>
           </section>
-          <aside className="relative flex flex-col justify-between overflow-hidden rounded-[2.5rem] border-4 border-slate-900 bg-white p-6 shadow-[8px_8px_0_#161b35] sm:p-8">
+          <aside className="relative flex flex-col justify-between overflow-hidden rounded-[2.5rem] border-2 border-slate-900 bg-white p-6 shadow-[4px_4px_0_#161b35] sm:p-8">
             <div aria-hidden="true" className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-emerald-100/50 blur-2xl pointer-events-none" />
             <div aria-hidden="true" className="absolute -bottom-16 -left-16 h-32 w-32 rounded-full bg-amber-100/50 blur-2xl pointer-events-none" />
             
             <div className="relative">
               <div className="flex items-center gap-3">
-                <span className="grid h-8 w-8 place-items-center rounded-full border-2 border-slate-900 bg-emerald-400 text-sm font-black shadow-[2px_2px_0_#161b35]">
+                <span className="grid h-8 w-8 place-items-center rounded-full border-2 border-slate-900 bg-emerald-400 text-sm font-black">
                   1
                 </span>
                 <p className="text-xs font-black tracking-[.2em] text-emerald-600">
@@ -555,7 +626,7 @@ export default function MembershipPage() {
                   role="radio"
                   aria-checked={active}
                   aria-label={`${plan.name}，NT$ ${plan.price}，${plan.duration}${active ? '，目前已選擇' : ''}`}
-                  className={`relative overflow-hidden rounded-[2rem] border-2 p-4 text-left transition sm:p-5 ${active ? "border-slate-900 bg-white shadow-[7px_7px_0_#161b35] -translate-y-1 ring-4 ring-amber-200" : "border-slate-300 bg-white/70 hover:border-slate-900 hover:bg-white"}`}
+                  className={`relative overflow-hidden rounded-[2rem] border-2 p-4 text-left transition sm:p-5 ${active ? "border-slate-900 bg-white shadow-[4px_4px_0_#161b35] -translate-y-1 ring-4 ring-amber-200" : "border-slate-300 bg-white/70 hover:border-slate-900 hover:bg-white"}`}
                 >
                   {plan.featured && (
                     <span className="absolute right-5 top-0 rounded-b-xl border-x-2 border-b-2 border-slate-900 bg-amber-300 px-3 py-1.5 text-xs font-black">
@@ -597,9 +668,61 @@ export default function MembershipPage() {
             })}
           </div>
         </section>
+
+        <section
+          aria-labelledby="membership-email-title"
+          className="mt-6 rounded-[2rem] border-2 border-slate-900 bg-white p-5 shadow-[3px_3px_0_#161b35] sm:p-7"
+        >
+          <div className="flex items-center gap-3">
+            <span className="grid h-8 w-8 place-items-center rounded-full border-2 border-slate-900 bg-sky-300 text-sm font-black">
+              3
+            </span>
+            <p className="text-xs font-black tracking-[.18em] text-sky-600">
+              付款人資料（必填）
+            </p>
+          </div>
+          <h2 id="membership-email-title" className="mt-3 text-xl font-black">留下付款資料，方便我們確認與通知</h2>
+          <p className="mt-1 text-sm font-bold leading-6 text-slate-500">
+            付款人姓名用於訂單核對；付款確認與到期提醒將寄送至此信箱。
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor="membership-payer-name" className="text-sm font-black text-slate-700">付款人姓名</label>
+              <input
+                id="membership-payer-name"
+                type="text"
+                autoComplete="name"
+                maxLength={80}
+                placeholder="請輸入真實姓名"
+                value={payerName}
+                onChange={(e) => { setPayerName(e.target.value); setPayerNameError(""); }}
+                className={`mt-1 w-full rounded-2xl border-2 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-900 focus:bg-white ${payerNameError ? "border-red-400 bg-red-50" : "border-slate-200"}`}
+              />
+              {payerNameError && <p role="alert" className="mt-2 text-xs font-bold text-red-600">{payerNameError}</p>}
+            </div>
+            <div>
+            <label htmlFor="membership-email" className="sr-only">電子信箱</label>
+            <p className="text-sm font-black text-slate-700">付款人電子信箱</p>
+            <input
+              id="membership-email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              placeholder="your@email.com"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setEmailError(""); }}
+              className={`mt-1 w-full rounded-2xl border-2 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-900 focus:bg-white ${emailError ? "border-red-400 bg-red-50" : "border-slate-200"}`}
+            />
+            {emailError && (
+              <p role="alert" className="mt-2 text-xs font-bold text-red-600">{emailError}</p>
+            )}
+            </div>
+          </div>
+        </section>
+
         <section
           aria-labelledby="membership-checkout-title"
-          className="mt-8 rounded-[2rem] border-2 border-slate-900 bg-violet-100 p-5 text-slate-900 shadow-[7px_7px_0_#161b35] sm:flex sm:items-center sm:justify-between sm:p-7"
+          className="mt-6 rounded-[2rem] border-2 border-slate-900 bg-violet-100 p-5 text-slate-900 shadow-[4px_4px_0_#161b35] sm:flex sm:items-center sm:justify-between sm:p-7"
         >
           <div>
             <p className="text-xs font-black tracking-[.18em] text-violet-700">
@@ -635,24 +758,22 @@ export default function MembershipPage() {
             {notice}
           </p>
         )}
-        <section aria-labelledby="membership-faq-title" className="mt-8 overflow-hidden rounded-[1.75rem] border-2 border-slate-900 bg-white shadow-[6px_6px_0_#161b35]">
-          <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4 sm:px-6">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-amber-50 text-amber-600">
-              <HelpCircle className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs font-black tracking-[.14em] text-amber-600">FAQ</p>
-              <h2 id="membership-faq-title" className="mt-0.5 text-xl font-black">常見問題</h2>
+        <section aria-labelledby="membership-faq-title" className="relative mt-10 overflow-hidden rounded-[2rem] border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#161b35] sm:p-8">
+          <div aria-hidden="true" className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-amber-100" />
+          <div className="relative border-b-2 border-slate-900 pb-6">
+            <div className="flex items-start gap-4">
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border-2 border-slate-900 bg-amber-300 text-slate-900"><HelpCircle className="h-6 w-6" /></div>
+              <div><p className="text-[10px] font-black tracking-[.2em] text-amber-700">MEMBERSHIP FAQ</p><h2 id="membership-faq-title" className="mt-1 text-2xl font-black sm:text-3xl">常見問題</h2><p className="mt-2 text-sm font-bold leading-6 text-slate-600">付款、會員資格與使用方式，一次整理給你。</p></div>
             </div>
           </div>
-          <div className="divide-y divide-slate-100 px-5 sm:px-6">
-            {membershipFaqs.map((faq) => (
-              <details key={faq.q} className="group py-1">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-3 font-black [&::-webkit-details-marker]:hidden">
-                  <span className="text-sm leading-6">{faq.q}</span>
-                  <span className="shrink-0 text-xl leading-none text-slate-400 transition group-open:rotate-45">+</span>
+          <div className="relative mt-5 grid gap-3">
+            {membershipFaqs.map((faq, index) => (
+              <details key={faq.q} className="group rounded-2xl border-2 border-slate-200 bg-slate-50 px-4 transition open:border-indigo-300 open:bg-indigo-50/60 sm:px-5">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-4 font-black [&::-webkit-details-marker]:hidden">
+                  <span className="flex min-w-0 items-center gap-3"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white text-[11px] font-black text-indigo-700 shadow-sm">{String(index + 1).padStart(2, '0')}</span><span className="text-sm leading-6 text-slate-800">{faq.q}</span></span>
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-lg leading-none text-slate-500 transition group-open:rotate-45 group-open:border-indigo-300 group-open:text-indigo-700">+</span>
                 </summary>
-                <div className="pb-4">
+                <div className="border-t border-indigo-100 pb-4 pt-3">
                   <p className="text-sm font-bold leading-7 text-slate-600">{faq.a}</p>
                   {faq.q === '支援哪些付款方式？' && (
                     <div className="mt-4 grid gap-3 rounded-2xl border border-indigo-100 bg-[#f7f9ff] p-3 sm:p-4 md:grid-cols-[1fr_1.25fr]">

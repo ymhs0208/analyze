@@ -39,6 +39,13 @@ const AuthFailModal = React.lazy(() => import('./components/AuthFailModal'));
 
 const DISCLAIMER_SEEN_KEY = 'tw-admission-disclaimer-seen';
 const RESULTS_STORAGE_KEY = 'tw-admission-analysis-results';
+const INVITATION_CODE_QUERY_PARAMS = ['code', 'invitationCode', 'invite'];
+
+function withoutInvitationCodeQuery(url = window.location.href) {
+  const sanitized = new URL(url);
+  INVITATION_CODE_QUERY_PARAMS.forEach((name) => sanitized.searchParams.delete(name));
+  return sanitized.toString();
+}
 
 /** SHA-256 雜湊邀請碼，回傳 hex 字串。localStorage 只存雜湊值，不留明文。 */
 async function hashInvitationCode(code: string): Promise<string> {
@@ -245,6 +252,9 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
     const code = params.get('code') || params.get('invitationCode') || params.get('invite');
     if (code) {
       setFormData(prev => ({ ...prev, invitationCode: code }));
+      // Invite codes are credentials, not navigation state. Remove them before
+      // they reach browser history, copied links, or later telemetry.
+      window.history.replaceState(window.history.state, '', withoutInvitationCodeQuery());
     }
 
     const hollandGroupsParam = params.get('hollandGroups') || params.get('vocationalGroups');
@@ -263,9 +273,10 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
+      const nextIsScrolled = window.scrollY > 50;
+      setIsScrolled((current) => current === nextIsScrolled ? current : nextIsScrolled);
     };
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -417,15 +428,16 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
           language: navigator.language,
           screenResolution: `${window.screen.width}x${window.screen.height}`,
           viewport: `${window.innerWidth}x${window.innerHeight}`,
-          url: window.location.href
+          url: withoutInvitationCodeQuery(),
         }
       };
 
       const data = await callBackend<any>(payload);
+      const { invitationCode: _invitationCode, ...storedScores } = formData;
       sessionStorage.setItem(
         RESULTS_STORAGE_KEY,
         JSON.stringify({
-          scores: formData,
+          scores: storedScores,
           results: data,
           identity: formData.identity,
           vocationalGroups,
@@ -544,20 +556,15 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
             <motion.section 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="relative p-6 bg-[#fffbea] border-4 border-slate-900 rounded-3xl shadow-[6px_6px_0px_0px_rgba(15,23,42,1)] flex flex-col overflow-hidden"
+              className="relative p-6 bg-[#fffbea] border-[3px] border-slate-900 rounded-3xl shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] flex flex-col overflow-hidden"
             >
-              {/* Decorative elements */}
-              <div className="absolute -right-5 -top-5 text-amber-700/15 pointer-events-none">
-                <ShieldCheck className="h-28 w-28" strokeWidth={2.25} aria-hidden="true" />
-              </div>
-
               <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 mb-2 relative z-10">
                 <div className="w-8 h-8 rounded-full bg-amber-100 border-2 border-slate-900 flex items-center justify-center">
                   <KeyRound className="w-4 h-4 text-amber-600" />
                 </div>
                 <span>系統授權碼</span>
               </h2>
-              <p className="text-xs font-bold text-slate-600 mb-4 relative z-10">請輸入由主辦單位提供之專屬邀請碼以解鎖進階分析</p>
+              <p className="text-xs font-bold text-slate-600 mb-4 relative z-10">輸入授權碼後，即可使用完整落點分析與志願建議；會員可直接略過。</p>
 
               {/* Announcement */}
               <div className={`relative z-10 mb-5 overflow-hidden rounded-2xl border-2 border-amber-300 bg-gradient-to-br from-amber-50 via-white to-orange-100 p-4 shadow-[0_8px_24px_rgba(245,158,11,0.16)]${memberAccess ? ' hidden' : ''}`}>
@@ -632,10 +639,8 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 }}
-              className="p-6 bg-emerald-50 border-4 border-slate-900 rounded-3xl shadow-[6px_6px_0px_0px_rgba(15,23,42,1)] space-y-6 relative overflow-hidden"
+              className="p-6 bg-emerald-50 border-[3px] border-slate-900 rounded-3xl shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] space-y-6 relative overflow-hidden"
             >
-              <div className="absolute -bottom-4 -left-4 w-20 h-20 bg-emerald-200 rounded-tr-[40px] opacity-40 border-t-4 border-r-4 border-slate-900 pointer-events-none"></div>
-
               <div className="relative z-10">
                 <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 mb-2">
                   <div className="w-8 h-8 rounded-full bg-emerald-100 border-2 border-slate-900 flex items-center justify-center">
@@ -644,7 +649,6 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
                   <span>使用者身份設定</span>
                 </h2>
                 <p className="text-xs font-bold text-slate-500 mb-4">我們將根據您的身分提供合適的落點建議</p>
-
                 <div className="grid grid-cols-3 gap-3">
                   {[
                     { id: 'student', label: '我是學生', icon: GraduationCap },
@@ -768,24 +772,24 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="p-6 bg-white border-2 border-slate-900 rounded-3xl shadow-[8px_8px_0px_0px_rgba(15,23,42,1)]"
+              className="p-6 bg-white border-[1.5px] border-slate-900 rounded-3xl shadow-[5px_5px_0px_0px_rgba(15,23,42,1)]"
             >
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
                 <div>
                   <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 mb-1">
-                    <MapPin className="w-6 h-6 text-rose-500" /> 分析區域
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-slate-900 bg-rose-100"><MapPin className="w-4 h-4 text-rose-500" /></span> 分析區域
                   </h2>
-                  <p className="text-sm font-bold text-slate-500">請選擇您要探索的高中職就學區域</p>
+                  <p className="text-sm font-bold text-slate-500">請先確認並選擇您報考的就學區</p>
                 </div>
                 
-                <div className="flex flex-row gap-2 sm:gap-3 w-full">
+                <div className="mt-4 flex w-full flex-row gap-2 sm:gap-3">
                   <button
                     type="button"
                     id="region-select-trigger"
                     onClick={() => setIsRegionOpen(true)}
                     aria-haspopup="dialog"
                     aria-expanded={isRegionOpen}
-                    className="flex-1 px-4 sm:px-6 py-4 rounded-2xl border-2 border-slate-900 flex items-center justify-between gap-2 sm:gap-4 font-black transition-all bg-amber-100 text-amber-900 hover:bg-amber-200 active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] active:shadow-none"
+                    className="group flex-1 px-4 sm:px-6 py-4 rounded-2xl border-2 border-slate-900 flex items-center justify-between gap-2 sm:gap-4 font-black transition-all bg-amber-100 text-amber-900 hover:bg-amber-200 active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] active:shadow-none"
                   >
                     <div className="flex items-center gap-3">
                       {formData.region ? (
@@ -796,7 +800,7 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
                         <span className="text-lg sm:text-xl">選擇就學區</span>
                       )}
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-900 shrink-0" />
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-amber-700 transition-colors group-hover:bg-slate-900 group-hover:text-white"><ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
                   </button>
                   {formData.region && (
                     <button
@@ -817,20 +821,27 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="p-6 sm:p-8 bg-sky-100 border-2 border-slate-900 rounded-3xl shadow-[8px_8px_0px_0px_rgba(15,23,42,1)]"
+              className="p-6 sm:p-8 bg-sky-100 border-[1.5px] border-slate-900 rounded-3xl shadow-[5px_5px_0px_0px_rgba(15,23,42,1)]"
             >
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <div>
                   <h2 className="text-xl font-black flex items-center gap-2 text-slate-900 mb-1">
-                    <Calculator className="w-6 h-6 text-indigo-600" /> 會考成績評估
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-slate-900 bg-indigo-100"><Calculator className="w-4 h-4 text-indigo-600" /></span> 會考成績
                   </h2>
-                  <p className="text-sm font-bold text-slate-600">請設定各科成績等級，系統將即時分析</p>
+                  <p className="text-sm font-bold text-slate-600">填入成績，找出適合志願。</p>
                 </div>
                 
-                {/* Result quick look or decoration */}
+                {/* Subject completion progress */}
                 <div className="bg-white border-2 border-slate-900 px-4 py-2 rounded-xl shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hidden sm:flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-emerald-500 animate-pulse" />
-                  <span className="font-black text-sm text-slate-900">即刻演算</span>
+                  <BookOpen className="w-4 h-4 text-indigo-600" />
+                  <span className="font-black text-sm text-slate-900">科目填寫進度 {[
+                    formData.chinese,
+                    formData.english,
+                    formData.math,
+                    formData.science,
+                    formData.social,
+                    formData.composition
+                  ].filter(Boolean).length}/6</span>
                 </div>
               </div>
 
@@ -842,10 +853,10 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
                   { id: 'science', label: '自然', icon: Activity, color: 'text-emerald-600', bgBorder: 'bg-emerald-50 border-emerald-300 focus:ring-emerald-400 focus:border-emerald-400 hover:border-emerald-400', theme: 'bg-white' },
                   { id: 'social', label: '社會', icon: Map, color: 'text-purple-600', bgBorder: 'bg-purple-50 border-purple-300 focus:ring-purple-400 focus:border-purple-400 hover:border-purple-400', theme: 'bg-white' }
                 ].map(subject => (
-                  <div key={subject.id} className={`relative group ${subject.theme} border-2 border-slate-900 rounded-2xl p-3 sm:p-4 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(15,23,42,1)] transition-all flex flex-col gap-3`}>
+                  <div key={subject.id} className={`relative group ${subject.theme} border-2 border-slate-900 rounded-2xl p-3 sm:p-4 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:-translate-y-1 hover:shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] transition-all flex flex-col gap-3`}>
                     <div className="flex items-center justify-between gap-2 sm:gap-4">
                       <label htmlFor={`score-${subject.id}`} className="text-base sm:text-lg font-black text-slate-700 flex items-center gap-3 shrink-0">
-                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl border-2 border-slate-900 flex items-center justify-center shrink-0 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] bg-slate-50`}>
+                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl border-2 border-slate-900 flex items-center justify-center shrink-0 bg-slate-50`}>
                           <subject.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${subject.color}`} />
                         </div>
                         {subject.label}
@@ -894,10 +905,10 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
                 ))}
 
                 {/* Composition */}
-                <div className="relative group bg-slate-900 border-2 border-slate-900 rounded-2xl p-3 sm:p-4 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(15,23,42,1)] transition-all flex flex-col gap-3">
+                <div className="relative group bg-slate-900 border-2 border-slate-900 rounded-2xl p-3 sm:p-4 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:-translate-y-1 hover:shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] transition-all flex flex-col gap-3">
                   <div className="flex items-center justify-between gap-2 sm:gap-4">
                     <label htmlFor="score-composition" className="text-base sm:text-lg font-black text-slate-100 flex items-center gap-3 shrink-0">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl border-2 border-amber-400/50 flex items-center justify-center shrink-0 shadow-[2px_2px_0px_0px_rgba(251,191,36,0.2)] bg-slate-800">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl border-2 border-amber-400/50 flex items-center justify-center shrink-0 bg-slate-800">
                         <PenTool className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
                       </div>
                       寫作
@@ -977,6 +988,7 @@ const [activeModal, setActiveModal] = useState<'disclaimer' | 'importantDates' |
           <div className="relative group">
             <button
               type="button"
+              id="start-analysis"
               onClick={handleAnalyze}
               disabled={status === 'auth' || status === 'quantum'}
               aria-busy={status === 'auth' || status === 'quantum'}

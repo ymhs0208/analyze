@@ -54,6 +54,7 @@ type PageMeta = {
   title: string;
   description: string;
   noindex?: boolean;
+  nofollow?: boolean;
 };
 
 const pageMetadata: Record<string, PageMeta> = {
@@ -97,6 +98,14 @@ const pageMetadata: Record<string, PageMeta> = {
     title: '高二班群怎麼選？｜全國會考落點分析',
     description: '認識高二班群、自然與社會取向、數學 A／B 及 18 學群，規劃自己的高中學習路徑。',
   },
+  '/future-pathways': {
+    title: '高中職三年後的下一步地圖｜全國會考落點分析',
+    description: '互動整理普高、技高、綜高與五專畢業後的常見升學、技優、特殊選才、就業與轉換路徑；正式資格以當年度簡章為準。',
+  },
+  '/life-feasibility': {
+    title: '生活條件比較單｜通勤、費用與住宿評估｜全國會考落點分析',
+    description: '比較兩所候選校科的通勤時間、轉乘、費用、住宿與家庭支持，可列印後和學生、家長或導師討論。',
+  },
   '/general-comprehensive-high-school': {
     title: '普通科與綜合高中怎麼選？｜全國會考落點分析',
     description: '比較普通科與綜合高中的課程與探索方向，協助學生選擇適合自己的高中學程。',
@@ -129,6 +138,11 @@ const pageMetadata: Record<string, PageMeta> = {
     title: '高中職、五專學校與科別搜尋｜全國會考落點分析',
     description: '搜尋各就學區高中職、五專與科別資訊，作為會考落點分析及志願選填的參考。',
   },
+  '/score-change': {
+    title: '一分改變分析｜會員升學決策工具｜全國會考落點分析',
+    description: '以本次會考成績與篩選條件，模擬六科提高或降低一級後可能增減的校科選擇；僅供升學規劃參考。',
+    noindex: true,
+  },
   '/site-map': {
     title: '網站地圖｜全國會考落點分析',
     description: '瀏覽全國會考落點分析的所有功能與升學資訊頁面，快速找到需要的工具與說明。',
@@ -145,6 +159,20 @@ const pageMetadata: Record<string, PageMeta> = {
   '/support/success': {
     title: '付款完成｜小額支持',
     description: '感謝支持全國會考落點分析。',
+    noindex: true,
+  },
+  '/membership': {
+    title: '會員方案｜免廣告與升學工具｜全國會考落點分析',
+    description: '以 LINE 登入確認會員資格，選擇免廣告方案並持續使用會考落點分析與升學規劃工具。',
+  },
+  '/membership/account': {
+    title: '我的會員帳號｜全國會考落點分析',
+    description: '查看目前會員資格與到期時間。',
+    noindex: true,
+  },
+  '/membership/success': {
+    title: '會員付款完成｜全國會考落點分析',
+    description: '會員付款完成後的資格確認頁面。',
     noindex: true,
   },
   '/after-sales-service': {
@@ -179,9 +207,26 @@ const pageMetadata: Record<string, PageMeta> = {
     title: '服務條款｜全國會考落點分析',
     description: '全國會考落點分析的服務條款與使用注意事項。',
   },
+  '/disclaimer': {
+    title: '免責聲明｜全國會考落點分析',
+    description: '說明會考落點分析結果的資料來源、使用範圍與正式招生資訊的確認方式。',
+  },
+  '/changelog': {
+    title: '更新紀錄｜全國會考落點分析',
+    description: '查看全國會考落點分析的功能更新、資料調整與服務改善紀錄。',
+  },
+  '/report-error': {
+    title: '資料問題回報｜全國會考落點分析',
+    description: '回報學校資料、功能操作或升學資訊問題，協助我們持續改善服務品質。',
+  },
   '/results': {
     title: '落點分析結果｜全國會考落點分析',
     description: defaultDescription,
+    noindex: true,
+  },
+  '/compare': {
+    title: '分析結果比較｜全國會考落點分析',
+    description: '比較個人暫存的候選學校資料。',
     noindex: true,
   },
 };
@@ -198,7 +243,10 @@ export const applyPageSeo = (path: string) => {
   const scoringRulesMeta = scoringRulesRegionId ? SCORING_RULES_META[scoringRulesRegionId] : null;
   const areaSlug = path.match(/^\/area\/([a-z-]+)$/)?.[1];
   const areaData = areaSlug ? getAreaBySlug(areaSlug) : null;
-  const metadata = newsArticle
+  const isSharedReport = /^\/shared\/[0-9a-f-]+$/i.test(path);
+  const metadata = isSharedReport
+    ? { title: '已分享的志願規劃｜全國會考落點分析', description: '此連結包含使用者分享的個人規劃資料。', noindex: true, nofollow: true }
+    : newsArticle
     ? { title: `${newsArticle.title}｜全國會考落點分析`, description: newsArticle.summary }
     : scoringRulesMeta
     ? { title: scoringRulesMeta.title, description: scoringRulesMeta.description }
@@ -220,8 +268,11 @@ export const applyPageSeo = (path: string) => {
   } else if (scoringRulesMeta && scoringRulesRegionId) {
     setMetaContent('meta[name="keywords"]', `超額比序, 免試入學, 會考, ${scoringRulesMeta.cityKeywords}, 志願選填, 計分規則`);
   }
-  setMetaContent('meta[name="robots"]', metadata.noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
-  setMetaContent('meta[name="googlebot"]', metadata.noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large');
+  const robots = metadata.noindex
+    ? `noindex, ${metadata.nofollow ? 'nofollow' : 'follow'}`
+    : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
+  setMetaContent('meta[name="robots"]', robots);
+  setMetaContent('meta[name="googlebot"]', metadata.noindex ? robots : 'index, follow, max-image-preview:large');
   setMetaContent('meta[property="og:title"]', metadata.title);
   setMetaContent('meta[property="og:description"]', metadata.description);
   setMetaContent('meta[property="og:url"]', pageUrl);
