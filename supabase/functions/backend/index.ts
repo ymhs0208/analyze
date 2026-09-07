@@ -121,12 +121,21 @@ const actionRateLimits: Record<string, { windowSeconds: number; maxRequests: num
   getVolunteerSchools: { windowSeconds: 60, maxRequests: 20 },
   createSharedReport: { windowSeconds: 60, maxRequests: 10 },
   getSharedReport: { windowSeconds: 60, maxRequests: 30 },
+  getVolunteerShareCollaboration: { windowSeconds: 60, maxRequests: 30 },
+  addVolunteerShareComment: { windowSeconds: 60, maxRequests: 12 },
+  updateVolunteerShareChoices: { windowSeconds: 60, maxRequests: 12 },
+  confirmVolunteerShareVersion: { windowSeconds: 60, maxRequests: 12 },
+  revokeVolunteerShare: { windowSeconds: 60, maxRequests: 6 },
+  rotateVolunteerShareEditorKey: { windowSeconds: 60, maxRequests: 6 },
   createEcpaySupportPayment: { windowSeconds: 60, maxRequests: 5 },
   getEcpaySupportPaymentStatus: { windowSeconds: 60, maxRequests: 20 },
   createMembershipPayment: { windowSeconds: 60, maxRequests: 5 },
   getMembershipStatus: { windowSeconds: 60, maxRequests: 30 },
   getMembershipPurchaseHistory: { windowSeconds: 60, maxRequests: 20 },
   getLineLoginSession: { windowSeconds: 60, maxRequests: 30 },
+  getMemberScoreRecords: { windowSeconds: 60, maxRequests: 30 },
+  saveMemberScoreRecord: { windowSeconds: 60, maxRequests: 12 },
+  deleteMemberScoreRecord: { windowSeconds: 60, maxRequests: 12 },
   redeemLineLoginCode: { windowSeconds: 60, maxRequests: 10 },
   revokeLineLoginSession: { windowSeconds: 60, maxRequests: 10 },
   deleteMembershipAccount: { windowSeconds: 3600, maxRequests: 3 },
@@ -354,7 +363,7 @@ async function activeMembershipForRequest(request: Request) {
 
   const { data, error } = await supabase
     .from('membership_payments')
-    .select('plan, expires_at, contact_email')
+    .select('plan, expires_at, paid_at, contact_email')
     .eq('status', 'paid')
     .gt('expires_at', new Date().toISOString())
     .eq('line_user_id', lineSession.line_user_id)
@@ -389,6 +398,63 @@ async function withTimeout<T>(
   } finally {
     clearTimeout(timer!);
   }
+}
+
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function cleanCollaborationText(value: unknown, maxLength: number) {
+  return String(value || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, maxLength);
+}
+
+function validateVolunteerChoices(value: unknown) {
+  if (!Array.isArray(value) || value.length > 30) throw new Error('Invalid volunteer choices.');
+  const fields = ['county', 'code', 'name', 'levelInfo', 'shift', 'groupCode', 'groupName', 'deptCode', 'deptName', 'id', 'preferenceRank', 'preferenceScore', 'sharesPreferenceRank'];
+  return value.map((choice) => {
+    if (!choice || typeof choice !== 'object' || Array.isArray(choice)) throw new Error('Invalid volunteer choice.');
+    const source = choice as Record<string, unknown>;
+    const cleaned: Record<string, string | number | boolean | null> = {};
+    for (const field of fields) {
+      const item = source[field];
+      if (typeof item === 'string') cleaned[field] = cleanCollaborationText(item, 160);
+      else if (typeof item === 'number' && Number.isFinite(item)) cleaned[field] = item;
+      else if (typeof item === 'boolean') cleaned[field] = item;
+      else cleaned[field] = null;
+    }
+    if (!cleaned.name || !cleaned.code || !cleaned.deptCode) throw new Error('Invalid volunteer choice.');
+    return cleaned;
+  });
+}
+
+async function collaborationReportForKey(tokenValue: unknown, editorKeyValue: unknown) {
+  const token = String(tokenValue || '').trim();
+  const editorKey = String(editorKeyValue || '').trim();
+  if (!uuidPattern.test(token) || !uuidPattern.test(editorKey)) throw new Error('Invalid collaboration link.');
+  const { data, error } = await withTimeout(
+    supabase.from('shared_reports')
+      .select('token, kind, payload, expires_at, revoked_at, collaboration_key, collaboration_version, collaboration_confirmed_at, collaboration_confirmed_by')
+      .eq('token', token)
+      .maybeSingle(),
+    5000,
+    'load volunteer collaboration',
+  );
+  if (error) throw error;
+  if (!data || data.revoked_at || data.kind !== 'volunteer' || !data.collaboration_key || !secureEqual(String(data.collaboration_key), editorKey)) {
+    throw new Error('This collaboration link is unavailable.');
+  }
+  if (data.expires_at && new Date(data.expires_at).getTime() <= Date.now()) throw new Error('This collaboration link has expired.');
+  return data;
+}
+
+async function ownedVolunteerShareForRequest(tokenValue: unknown, request: Request) {
+  const token = String(tokenValue || '').trim();
+  const session = await getLineLoginSession(lineSessionTokenFromCookie(request));
+  if (!session || !uuidPattern.test(token)) throw new Error('無法管理這個分享連結。');
+  const { data, error } = await supabase.from('shared_reports')
+    .select('token, kind, owner_line_user_id, revoked_at, collaboration_key')
+    .eq('token', token).eq('owner_line_user_id', session.line_user_id).maybeSingle();
+  if (error) throw error;
+  if (!data || data.kind !== 'volunteer') throw new Error('只有建立者可以管理這個分享連結。');
+  return data;
 }
 
 async function reconcilePendingMembershipPayment(lineUserId: string) {
@@ -1379,7 +1445,7 @@ async function handleAction(payload: Record<string, any>, request: Request) {
 
     case 'getMembershipStatus': {
       const data = await activeMembershipForRequest(request);
-      return data ? { active: true, plan: data.plan, expiresAt: data.expires_at, contactEmail: data.contact_email ?? null } : { active: false };
+      return data ? { active: true, plan: data.plan, expiresAt: data.expires_at, activatedAt: data.paid_at ?? null, contactEmail: data.contact_email ?? null } : { active: false };
     }
 
     case 'getMembershipPurchaseHistory': {
@@ -1440,6 +1506,47 @@ async function handleAction(payload: Record<string, any>, request: Request) {
       return session ? { loggedIn: true, name: session.display_name, pictureUrl: session.picture_url } : { loggedIn: false };
     }
 
+    case 'getMemberScoreRecords': {
+      const session = await getLineLoginSession(lineSessionTokenFromCookie(request));
+      if (!session) return { loggedIn: false, records: [] };
+      const { data, error } = await supabase.from('member_score_records')
+        .select('id, record_type, title, exam_date, note, scores, created_at, updated_at')
+        .eq('line_user_id', session.line_user_id)
+        .order('exam_date', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false })
+        .limit(30);
+      if (error) throw error;
+      return { loggedIn: true, name: session.display_name, records: data || [] };
+    }
+
+    case 'saveMemberScoreRecord': {
+      const session = await getLineLoginSession(lineSessionTokenFromCookie(request));
+      if (!session) throw new Error('請先登入 LINE 帳號。');
+      const recordType = String(payload.recordType || '');
+      const title = cleanCollaborationText(payload.title, 60);
+      const note = cleanCollaborationText(payload.note, 80) || null;
+      const examDate = String(payload.examDate || '').trim() || null;
+      if (recordType !== 'mock' && recordType !== 'official') throw new Error('成績類型不正確。');
+      if (!title) throw new Error('請填寫這筆成績的名稱。');
+      if (examDate && !/^\d{4}-\d{2}-\d{2}$/.test(examDate)) throw new Error('日期格式不正確。');
+      assertScores(payload.scores);
+      const { data, error } = await supabase.from('member_score_records').insert({
+        line_user_id: session.line_user_id, record_type: recordType, title, exam_date: examDate, note, scores: payload.scores,
+      }).select('id, record_type, title, exam_date, note, scores, created_at, updated_at').single();
+      if (error) throw error;
+      return { record: data };
+    }
+
+    case 'deleteMemberScoreRecord': {
+      const session = await getLineLoginSession(lineSessionTokenFromCookie(request));
+      if (!session) throw new Error('請先登入 LINE 帳號。');
+      const id = String(payload.id || '').trim();
+      if (!uuidPattern.test(id)) throw new Error('成績紀錄格式不正確。');
+      const { error } = await supabase.from('member_score_records').delete().eq('id', id).eq('line_user_id', session.line_user_id);
+      if (error) throw error;
+      return { deleted: true };
+    }
+
     case 'redeemLineLoginCode': {
       await pruneExpiredLineLoginData();
       const code = String(payload.code || '').trim();
@@ -1481,6 +1588,8 @@ async function handleAction(payload: Record<string, any>, request: Request) {
       const kind = String(payload.kind || '');
       const report = payload.payload;
       const requestedPermanentLink = kind === 'volunteer' && payload.persistent === true;
+      const requestedCollaboration = kind === 'volunteer' && payload.collaboration === true;
+      const requestedExpiryDays = Number(payload.expiresInDays || 5);
       if (kind !== 'analysis' && kind !== 'volunteer') throw new Error('Invalid shared report type.');
       if (!report || typeof report !== 'object' || Array.isArray(report)) throw new Error('Invalid shared report content.');
       if (kind === 'analysis' && (!report.results || typeof report.results !== 'object')) {
@@ -1498,25 +1607,31 @@ async function handleAction(payload: Record<string, any>, request: Request) {
       // Only an active member may create a no-expiry volunteer-list link.
       // Do not trust the client flag: membership is checked again here, where
       // the HttpOnly LINE session cookie is available.
-      if (requestedPermanentLink && !await activeMembershipForRequest(request)) {
-        throw new Error('An active membership is required for a permanent sharing link.');
+      if (!Number.isInteger(requestedExpiryDays) || ![5, 7, 30, 90].includes(requestedExpiryDays)) throw new Error('分享期限設定不正確。');
+      const sharingSession = await getLineLoginSession(lineSessionTokenFromCookie(request));
+      if ((requestedPermanentLink || requestedCollaboration) && !await activeMembershipForRequest(request)) {
+        throw new Error('An active membership is required for collaboration and permanent sharing links.');
       }
+      if (requestedCollaboration && !sharingSession) throw new Error('請先登入建立協作分享。');
 
-      const sharedReport = requestedPermanentLink
-        ? { kind, payload: report, expires_at: null }
-        : { kind, payload: report };
+      const expiresAt = new Date(Date.now() + requestedExpiryDays * 24 * 60 * 60 * 1000).toISOString();
+      const sharedReport = {
+        kind, payload: report, expires_at: expiresAt,
+        ...(sharingSession ? { owner_line_user_id: sharingSession.line_user_id } : {}),
+        ...(requestedCollaboration ? { collaboration_key: crypto.randomUUID() } : {}),
+      };
 
       const { data, error } = await withTimeout(
         supabase
           .from('shared_reports')
           .insert(sharedReport)
-          .select('token, expires_at')
+          .select('token, expires_at, collaboration_key')
           .single(),
         5000,
         'create shared report',
       );
       if (error) throw error;
-      return { token: data.token, expiresAt: data.expires_at };
+      return { token: data.token, expiresAt: data.expires_at, collaborationKey: data.collaboration_key || null };
     }
 
     case 'getSharedReport': {
@@ -1527,17 +1642,116 @@ async function handleAction(payload: Record<string, any>, request: Request) {
       const { data, error } = await withTimeout(
         supabase
           .from('shared_reports')
-          .select('kind, payload, expires_at')
+        .select('kind, payload, expires_at, revoked_at, collaboration_key, collaboration_version, collaboration_confirmed_at, collaboration_confirmed_by')
           .eq('token', token)
           .maybeSingle(),
         5000,
         'load shared report',
       );
       if (error) throw error;
-      if (!data || (data.expires_at && new Date(data.expires_at).getTime() <= Date.now())) {
+      if (!data || data.revoked_at || (data.expires_at && new Date(data.expires_at).getTime() <= Date.now())) {
         throw new Error('This shared report has expired or is unavailable.');
       }
-      return { kind: data.kind, payload: data.payload, expiresAt: data.expires_at };
+      return {
+        kind: data.kind,
+        payload: data.payload,
+        expiresAt: data.expires_at,
+        collaborationEnabled: Boolean(data.collaboration_key),
+        collaborationVersion: data.collaboration_version || 1,
+        collaborationConfirmedAt: data.collaboration_confirmed_at || null,
+        collaborationConfirmedBy: data.collaboration_confirmed_by || null,
+      };
+    }
+
+    case 'revokeVolunteerShare': {
+      const report = await ownedVolunteerShareForRequest(payload.token, request);
+      if (report.revoked_at) return { revoked: true };
+      const { error } = await supabase.from('shared_reports').update({ revoked_at: new Date().toISOString() }).eq('token', report.token);
+      if (error) throw error;
+      return { revoked: true };
+    }
+
+    case 'rotateVolunteerShareEditorKey': {
+      const report = await ownedVolunteerShareForRequest(payload.token, request);
+      if (report.revoked_at || !report.collaboration_key) throw new Error('這個協作連結已無法使用。');
+      const nextKey = crypto.randomUUID();
+      const { error } = await supabase.from('shared_reports').update({ collaboration_key: nextKey }).eq('token', report.token);
+      if (error) throw error;
+      return { collaborationKey: nextKey };
+    }
+
+    case 'getVolunteerShareCollaboration': {
+      const report = await collaborationReportForKey(payload.token, payload.editorKey);
+      const { data, error } = await withTimeout(
+        supabase.from('shared_report_collaboration_events')
+          .select('id, event_type, actor_name, message, version, created_at')
+          .eq('report_token', report.token)
+          .order('created_at', { ascending: false })
+          .limit(100),
+        5000,
+        'load collaboration events',
+      );
+      if (error) throw error;
+      return {
+        choices: Array.isArray(report.payload?.choices) ? report.payload.choices : [],
+        version: report.collaboration_version || 1,
+        confirmedAt: report.collaboration_confirmed_at || null,
+        confirmedBy: report.collaboration_confirmed_by || null,
+        events: data || [],
+      };
+    }
+
+    case 'addVolunteerShareComment': {
+      const report = await collaborationReportForKey(payload.token, payload.editorKey);
+      const actorName = cleanCollaborationText(payload.actorName, 24);
+      const message = cleanCollaborationText(payload.message, 800);
+      if (!actorName || !message) throw new Error('請填寫姓名與留言內容。');
+      if (hasInappropriateContent(`${actorName} ${message}`)) throw new Error('留言含有不適當字詞，請調整後再送出。');
+      const { error } = await supabase.from('shared_report_collaboration_events').insert({
+        report_token: report.token, event_type: 'comment', actor_name: actorName, message, version: report.collaboration_version || 1,
+      });
+      if (error) throw error;
+      return { added: true };
+    }
+
+    case 'updateVolunteerShareChoices': {
+      const report = await collaborationReportForKey(payload.token, payload.editorKey);
+      const actorName = cleanCollaborationText(payload.actorName, 24);
+      const choices = validateVolunteerChoices(payload.choices);
+      if (!actorName) throw new Error('請先填寫你的稱呼。');
+      const nextPayload = { ...(report.payload as Record<string, unknown>), choices, updatedAt: new Date().toISOString() };
+      const nextVersion = Number(report.collaboration_version || 1) + 1;
+      const { data: updatedReport, error: updateError } = await supabase.from('shared_reports').update({
+        payload: nextPayload,
+        collaboration_version: nextVersion,
+        collaboration_confirmed_at: null,
+        collaboration_confirmed_by: null,
+      }).eq('token', report.token).eq('collaboration_version', report.collaboration_version || 1).select('token').maybeSingle();
+      if (updateError) throw updateError;
+      if (!updatedReport) throw new Error('志願清單已被其他人更新，請重新整理後再試。');
+      const { error: eventError } = await supabase.from('shared_report_collaboration_events').insert({
+        report_token: report.token, event_type: 'revision', actor_name: actorName,
+        message: `更新志願清單（${choices.length} 個志願）`, version: nextVersion,
+      });
+      if (eventError) throw eventError;
+      return { choices, version: nextVersion };
+    }
+
+    case 'confirmVolunteerShareVersion': {
+      const report = await collaborationReportForKey(payload.token, payload.editorKey);
+      const actorName = cleanCollaborationText(payload.actorName, 24);
+      if (!actorName) throw new Error('請先填寫你的稱呼。');
+      const confirmedAt = new Date().toISOString();
+      const { error: updateError } = await supabase.from('shared_reports').update({
+        collaboration_confirmed_at: confirmedAt, collaboration_confirmed_by: actorName,
+      }).eq('token', report.token);
+      if (updateError) throw updateError;
+      const { error: eventError } = await supabase.from('shared_report_collaboration_events').insert({
+        report_token: report.token, event_type: 'confirmed', actor_name: actorName,
+        message: `確認第 ${report.collaboration_version || 1} 版志願清單`, version: report.collaboration_version || 1,
+      });
+      if (eventError) throw eventError;
+      return { confirmedAt, confirmedBy: actorName, version: report.collaboration_version || 1 };
     }
 
     case 'validateInvitationCode':
@@ -1971,6 +2185,13 @@ Deno.serve(async (request) => {
     });
 
     const responseHeaders: HeadersInit = {};
+    // Score records are personal education data. Do not let a browser, CDN or
+    // shared device cache an API response after the user signs out.
+    if (action === 'getMemberScoreRecords' || action === 'saveMemberScoreRecord' || action === 'deleteMemberScoreRecord') {
+      responseHeaders['Cache-Control'] = 'no-store, private, max-age=0';
+      responseHeaders.Pragma = 'no-cache';
+      responseHeaders.Expires = '0';
+    }
     if (action === 'redeemLineLoginCode' && typeof result?.sessionToken === 'string') {
       responseHeaders['Set-Cookie'] = lineSessionCookie(result.sessionToken);
       delete result.sessionToken;
