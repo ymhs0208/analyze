@@ -53,11 +53,28 @@ jobs:
           echo "Dist folder:"
           ls -la dist 2>/dev/null || echo "dist folder does not exist yet"
 
+      - name: Verify login and payment credential security
+        run: |
+          for test_file in security-audit/line-login-security.test.mjs security-audit/cookie-session-security.test.mjs security-audit/support-payment-security.test.mjs; do
+            if [ ! -f "$test_file" ]; then
+              echo "::error file=$test_file::Required security test is missing from the checkout."
+              exit 1
+            fi
+          done
+          node --test security-audit/line-login-security.test.mjs security-audit/cookie-session-security.test.mjs security-audit/support-payment-security.test.mjs
+
       - name: Build production site
         run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Verify LINE login binding is included
+        run: |
+          if ! grep -q "browserVerifier" dist/auth-fragment-guard.js || ! grep -R -q "browserChallenge" dist/assets; then
+            echo "ERROR: browser-bound LINE login code is missing from the build"
+            exit 1
+          fi
 
       - name: Verify build output
         run: |

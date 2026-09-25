@@ -1,3 +1,4 @@
+import VocationalComparePage from './components/VocationalComparePage';
 import { lazy, StrictMode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Lightbulb } from 'lucide-react';
@@ -33,6 +34,7 @@ const MockVolunteerPage = lazy(() => import('./components/MockVolunteerPage.tsx'
 const SearchPage = lazy(() => import('./components/SearchPage.tsx'));
 const ResultsPage = lazy(() => import('./components/ResultsPage.tsx'));
 const ScoreChangePage = lazy(() => import('./components/ScoreChangePage.tsx'));
+const ScoreRecordsPage = lazy(() => import('./components/ScoreRecordsPage.tsx'));
 const ComparisonPage = lazy(() => import('./components/ComparisonPage.tsx'));
 const ReportErrorPage = lazy(() => import('./components/ReportErrorPage.tsx'));
 const SharedReportPage = lazy(() => import('./components/SharedReportPage.tsx'));
@@ -45,6 +47,7 @@ const SupportPaymentSuccessPage = lazy(() => import('./components/SupportPayment
 const SupportPolicyPage = lazy(() => import('./components/SupportPolicyPage.tsx'));
 const MembershipPage = lazy(() => import('./components/MembershipPage.tsx'));
 const MembershipAccountPage = lazy(() => import('./components/MembershipAccountPage.tsx'));
+const PrivacyCenterPage = lazy(() => import('./components/PrivacyCenterPage.tsx'));
 const VocationalEncyclopediaPage = lazy(() => import('./components/VocationalEncyclopediaPage.tsx'));
 const RegionScoringRulesPage = lazy(() => import('./components/RegionScoringRulesPage.tsx'));
 const AreaPage = lazy(() => import('./components/AreaPage.tsx'));
@@ -85,7 +88,16 @@ const scoringRulesRegionId = path.match(/^\/scoring-rules\/([a-z-]+)$/)?.[1];
 const areaSlug = path.match(/^\/area\/([a-z-]+)$/)?.[1];
 const newsArticleId = path.match(/^\/news\/(\d+)$/)?.[1];
 const redirectedRoute = new URLSearchParams(window.location.search).get('route');
-if (redirectedRoute) window.history.replaceState(null, '', withBasePath(path));
+if (redirectedRoute) {
+  // GitHub Pages redirects deep links through ?route=… . Keep any other
+  // query values (notably the collaboration key on shared volunteer lists)
+  // when restoring the clean route, otherwise an editable share degrades to
+  // read-only immediately after the page loads.
+  const query = new URLSearchParams(window.location.search);
+  query.delete('route');
+  const remainingQuery = query.toString();
+  window.history.replaceState(null, '', `${withBasePath(path)}${remainingQuery ? `?${remainingQuery}` : ''}${window.location.hash}`);
+}
 applyPageSeo(path);
 
 const page =
@@ -95,6 +107,7 @@ const page =
   path === '/changelog' ? <ChangelogPage /> :
   path === '/guide/find' ? <CategoryOverviewPage categoryId="find" /> :
   path === '/guide/choose' ? <CategoryOverviewPage categoryId="choose" /> :
+  path === '/guide/scoring' ? <CategoryOverviewPage categoryId="scoring" /> :
   path === '/guide/plan' ? <CategoryOverviewPage categoryId="plan" /> :
   path === '/guide/member' ? <CategoryOverviewPage categoryId="member" /> :
   path === '/guide/help' ? <CategoryOverviewPage categoryId="help" /> :
@@ -112,6 +125,7 @@ const page =
   path === '/search' ? <SearchPage /> :
   path === '/results' ? <ResultsPage /> :
   path === '/score-change' ? <ScoreChangePage /> :
+  path === '/score-records' ? <ScoreRecordsPage /> :
   path === '/compare' ? <ComparisonPage /> :
   path === '/report-error' ? <ReportErrorPage /> :
   sharedReportToken ? <SharedReportPage token={sharedReportToken} /> :
@@ -126,16 +140,18 @@ const page =
   path === '/support/failed' ? <SupportPaymentFailedPage /> :
   path === '/support/success' ? <SupportPaymentSuccessPage /> :
   path === '/membership/account' ? <MembershipAccountPage /> :
+  path === '/privacy-center' ? <PrivacyCenterPage /> :
   path === '/membership' || path === '/membership/success' ? <MembershipPage /> :
   path === '/after-sales-service' ? <SupportPolicyPage kind="after-sales" /> :
   path === '/refund-cancellation-policy' ? <SupportPolicyPage kind="refund-cancellation" /> :
+  path === '/vocational-compare' ? <VocationalComparePage /> :
   path === '/vocational-encyclopedia' ? <VocationalEncyclopediaPage /> :
   scoringRulesRegionId ? <RegionScoringRulesPage regionId={scoringRulesRegionId} /> :
   areaSlug ? <AreaPage slug={areaSlug} /> :
   <App />;
 
 const informationalPaths = new Set(['/advantages', '/disclaimer', '/faq-glossary', '/five-year-college-rules', '/grade-level', '/grade-11-pathways', '/future-pathways', '/life-feasibility', '/general-comprehensive-high-school', '/historical-stats', '/important-dates', '/instructions', '/holland', '/school-types', '/strategy', '/vocational-encyclopedia']);
-const showRelatedReading = informationalPaths.has(path) || path.startsWith('/scoring-rules/') || path.startsWith('/area/');
+const showRelatedReading = informationalPaths.has(path) || Boolean(newsArticleId) || path.startsWith('/scoring-rules/') || path.startsWith('/area/');
 const pagesWithoutSharedFooter = new Set(['/', '/results', '/compare', '/holland', '/support/success', '/support/failed']);
 const showSharedFooter = !pagesWithoutSharedFooter.has(path) && !sharedReportToken;
 

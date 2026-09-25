@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { withBasePath } from '../lib/routes';
 import ShareReportDialog from './ShareReportDialog';
+import LocalVolunteerVersions from './LocalVolunteerVersions';
+import type { VersionChoice } from '../lib/volunteerVersions';
 
 interface SchoolItem {
   id: string;
@@ -234,6 +236,12 @@ export default function MockVolunteerPage() {
   const allowPageExitRef = useRef(false);
 
   useEffect(() => {
+    if (!notice.startsWith('已從志願清單移除')) return;
+    const timer = window.setTimeout(() => setNotice(''), 3_000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
+  useEffect(() => {
     if (new URLSearchParams(window.location.search).get('import') !== 'shared') return;
     const raw = window.localStorage.getItem(SHARED_COPY_STORAGE_KEY);
     if (!raw) return;
@@ -366,14 +374,15 @@ export default function MockVolunteerPage() {
   }, [schools, filterCounty, activeRegionCounties, filterType, filterGroup, filterDepartment, searchQuery]);
 
   const addChoice = (school: SchoolItem) => {
-    if (selectedChoices.length >= 30) {
-      setNotice('最多可加入 30 個志願。');
+    const existingChoice = selectedChoices.find((choice) => isSameVolunteerOption(choice, school));
+    if (existingChoice) {
+      setSelectedChoices((choices) => choices.filter((choice) => choice.id !== existingChoice.id));
+      setNotice(`已從志願清單移除「${school.name} ${school.deptName}」。`);
       return;
     }
 
-    const exists = selectedChoices.some((choice) => isSameVolunteerOption(choice, school));
-    if (exists) {
-      setNotice('這個校科已經在志願清單中。');
+    if (selectedChoices.length >= 30) {
+      setNotice('最多可加入 30 個志願。');
       return;
     }
 
@@ -539,7 +548,7 @@ export default function MockVolunteerPage() {
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <section className="border-b-4 border-slate-900 bg-gradient-to-br from-sky-100 via-white to-indigo-100">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[110rem] px-4 py-6 sm:px-6 lg:px-10">
           <a
             href={withBasePath('/')}
             onClick={requestLeavePage}
@@ -579,7 +588,7 @@ export default function MockVolunteerPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-[110rem] px-4 py-6 sm:px-6 lg:px-10">
         <div className="mb-5 grid gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]">
             <div className="text-xs font-black text-slate-500">目前區域</div>
@@ -604,7 +613,7 @@ export default function MockVolunteerPage() {
           <p className="mt-2 text-xs font-bold leading-5 text-slate-500">此為志願序項目說明；資格、會考、多元表現與其他超額比序項目，請以當年度官方系統與簡章為準。</p>
         </section>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(460px,520px)] lg:items-start">
           <section className="min-h-[620px] overflow-hidden rounded-2xl border-4 border-slate-900 bg-white shadow-[6px_6px_0px_0px_rgba(15,23,42,1)]">
             <div className="border-b-4 border-slate-900 bg-sky-50/70 p-4 sm:p-5">
               <div className="flex items-center gap-2 text-lg font-black">
@@ -688,15 +697,14 @@ export default function MockVolunteerPage() {
                           </div>
                           <button
                             onClick={() => addChoice(school)}
-                            disabled={isSelected}
                             className={`flex h-10 shrink-0 items-center justify-center gap-1 rounded-xl border-2 border-slate-900 px-2 text-xs font-black transition-all ${
                               isSelected
-                                ? 'bg-emerald-100 text-emerald-700'
+                                ? 'bg-emerald-100 text-emerald-800 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:-translate-y-0.5 hover:bg-rose-100 hover:text-rose-800 active:translate-y-0 active:shadow-none'
                                 : 'bg-white text-slate-800 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:-translate-y-0.5 hover:bg-sky-300 active:translate-y-0 active:shadow-none'
                             }`}
-                            aria-label={isSelected ? '已加入' : '加入志願'}
+                            aria-label={isSelected ? `從志願清單移除：${school.name} ${school.deptName}` : `加入志願：${school.name} ${school.deptName}`}
                           >
-                            {isSelected ? <><CheckCircle2 className="h-4 w-4" />已加入</> : <><Plus className="h-4 w-4" />加入</>}
+                            {isSelected ? <><Trash2 className="h-4 w-4" />移除</> : <><Plus className="h-4 w-4" />加入</>}
                           </button>
                         </div>
                       </article>
@@ -726,7 +734,7 @@ export default function MockVolunteerPage() {
               <div className="relative mt-4 rounded-2xl border-2 border-indigo-300 bg-indigo-50 p-4 text-left shadow-[3px_3px_0px_0px_rgba(67,56,202,0.18)]">
                 <div className="flex items-center gap-2 text-[11px] font-black tracking-wider text-indigo-700"><Share2 className="h-4 w-4" />一起討論志願</div>
                 <div className="mt-1 text-base font-black text-indigo-950">分享志願清單</div>
-                <p className="mt-1 text-xs font-bold leading-5 text-slate-600">建立唯讀連結給家長、老師查看；對方可複製到自己的模擬頁修改，原始清單不會變更。</p>
+                <p className="mt-1 text-xs font-bold leading-5 text-slate-600">可建立唯讀連結；會員也能開啟協作，讓家長留言、共同調整順序並確認版本。</p>
               </div>
               <div className="relative mt-3 grid grid-cols-2 gap-2">
                 <button
@@ -988,13 +996,14 @@ export default function MockVolunteerPage() {
       )}
 
       {notice && (
-        <div className={`fixed inset-x-0 bottom-4 z-50 mx-auto flex w-[calc(100%-2rem)] max-w-md items-center justify-between gap-3 rounded-xl border-4 p-4 shadow-[6px_6px_0px_0px_rgba(15,23,42,1)] ${notice === '最多可加入 30 個志願。' ? 'border-amber-500 bg-amber-50' : 'border-slate-900 bg-white'}`}>
+        <div className={`fixed inset-x-0 bottom-4 z-50 mx-auto flex w-[calc(100%-2rem)] max-w-md items-center justify-between gap-3 rounded-xl border-4 p-4 ${notice.startsWith('已從志願清單移除') ? '' : 'shadow-[6px_6px_0px_0px_rgba(15,23,42,1)]'} ${notice === '最多可加入 30 個志願。' ? 'border-amber-500 bg-amber-50' : 'border-slate-900 bg-white'}`}>
           <div className="text-sm font-black text-slate-800">{notice}</div>
-          <button onClick={() => setNotice('')} className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-black text-white">
+          {!notice.startsWith('已從志願清單移除') && <button onClick={() => setNotice('')} className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-black text-white">
             知道了
-          </button>
+          </button>}
         </div>
       )}
+      <div className="mx-auto max-w-6xl px-4"><LocalVolunteerVersions key={region} region={region} choices={selectedChoices as unknown as VersionChoice[]} onRestore={items => setSelectedChoices(items.map(item => ({ ...item, id: createChoiceId(item as unknown as SchoolItem) })) as unknown as SchoolItem[])} /></div>
       <ShareReportDialog
         isOpen={isShareOpen}
         onClose={() => setIsShareOpen(false)}

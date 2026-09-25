@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Share2, Menu, Compass, Target, CalendarDays, CircleHelp, ArrowRight, X, Instagram, Megaphone } from 'lucide-react';
+import { Search, Share2, Menu, Compass, Calculator, Target, CalendarDays, CircleHelp, ArrowRight, X, Instagram, Megaphone, Heart } from 'lucide-react';
 import { withBasePath } from '../../lib/routes';
+import { getScheduleAnnouncement } from '../../lib/scheduleAnnouncement';
 import { menuCategories, type MenuCategory, type MenuItem } from './NavigationDrawer';
 import { categoryOverviewPaths } from '../../lib/categoryOverview';
 
@@ -15,17 +16,6 @@ function ThreadsIcon({ className }: { className?: string }) {
 
 type HeaderModalId = 'rating' | 'scoreInquiry';
 
-function getAnnouncementMessage(date = new Date()) {
-  const month = date.getMonth() + 1;
-  const memberBenefits = '會員 NT$49／月：免廣告、免授權碼，解鎖完整功能。';
-
-  if (month <= 2) return `公告：會考報名與重要時程陸續更新中，現在開始規劃最安心。${memberBenefits}`;
-  if (month <= 5) return `公告：116會考資訊更新中，掌握考前重要時程與升學方向。${memberBenefits}`;
-  if (month <= 7) return `公告：成績公布與志願選填期間，升學資訊持續更新中。${memberBenefits}`;
-  if (month === 8) return `公告：放榜與報到時程更新中，請留意各校最新通知。${memberBenefits}`;
-  return `公告：116會考資訊更新中，提早探索升學方向、為下一步做好準備。${memberBenefits}`;
-}
-
 interface AppHeaderProps {
   isScrolled: boolean;
   onShareClick: () => void;
@@ -37,9 +27,7 @@ export default function AppHeader({ isScrolled, onShareClick, onMenuClick, setAc
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
   const [globalSearchTerm, setGlobalSearchTerm] = useState('');
-  const getCompactNavigation = () => typeof window !== 'undefined' && (
-    window.innerWidth < 1024 || window.matchMedia('(hover: none), (pointer: coarse)').matches
-  );
+  const getCompactNavigation = () => typeof window !== 'undefined' && window.innerWidth < 1024;
   const [isCompactNavigation, setIsCompactNavigation] = useState(getCompactNavigation);
   const closeMenuTimer = useRef<number | null>(null);
   const globalSearchInputRef = useRef<HTMLInputElement>(null);
@@ -89,7 +77,11 @@ export default function AppHeader({ isScrolled, onShareClick, onMenuClick, setAc
     return () => window.removeEventListener('open-site-search', openSiteSearch);
   }, []);
   useEffect(() => {
-    const updateNavigationMode = () => setIsCompactNavigation(getCompactNavigation());
+    const updateNavigationMode = () => {
+      const compact = getCompactNavigation();
+      setIsCompactNavigation(compact);
+      if (compact) setActiveMenu(null);
+    };
     updateNavigationMode();
     window.addEventListener('resize', updateNavigationMode);
     return () => window.removeEventListener('resize', updateNavigationMode);
@@ -98,6 +90,7 @@ export default function AppHeader({ isScrolled, onShareClick, onMenuClick, setAc
   const navigationLinks: Array<{ id: keyof typeof categoryOverviewPaths; label: string; icon: typeof Compass; iconColor: string; title: string; description: string; categories: MenuCategory[] }> = [
     { id: 'find', label: '我要查資料', icon: Compass, iconColor: findCategory('find').color, title: '我要查資料', description: '快速找到適合的學校、科別與升學方向', categories: [findCategory('find')] },
     { id: 'choose', label: '我要選志願', icon: Target, iconColor: findCategory('choose').color, title: '我要選志願', description: '依據成績與目標，安排你的志願順序', categories: [findCategory('choose')] },
+    { id: 'scoring', label: '各區計分方式', icon: Calculator, iconColor: findCategory('scoring').color, title: '各區計分方式', description: '集中查詢各就學區積分換算、超額比序與五專規則', categories: [findCategory('scoring')] },
     { id: 'plan', label: '我要規劃升學', icon: CalendarDays, iconColor: findCategory('plan').color, title: '我要規劃升學', description: '從興趣探索到重要時程，一次準備好', categories: [findCategory('plan')] },
     { id: 'member', label: '會員與資源', icon: CircleHelp, iconColor: findCategory('membership').color, title: '會員與升學資源', description: '管理會員資格，前往相關的升學工具與平台', categories: [findCategory('membership'), findCategory('external')] },
     { id: 'help', label: '使用協助', icon: CircleHelp, iconColor: findCategory('support').color, title: '使用協助與平台資訊', description: '取得操作支援，也能查看平台規範與最新狀態', categories: [findCategory('support'), findCategory('about')] },
@@ -128,22 +121,40 @@ export default function AppHeader({ isScrolled, onShareClick, onMenuClick, setAc
     return menuCategories.flatMap((category) => category.items.map((item) => ({ ...item, categoryLabel: category.label })))
       .filter((item) => `${item.categoryLabel} ${item.label} ${item.description} ${item.keywords}`.toLowerCase().includes(keyword));
   }, [globalSearchTerm]);
-  const announcementMessage = getAnnouncementMessage();
+  const [announcement, setAnnouncement] = useState(() => getScheduleAnnouncement());
+  useEffect(() => {
+    const refresh = () => setAnnouncement(getScheduleAnnouncement());
+    const interval = window.setInterval(refresh, 30_000);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, []);
 
   return (
     <div className={`fixed top-0 left-0 right-0 z-[90] pointer-events-none transition-[padding] duration-150 ease-out ${isScrolled ? 'p-2' : 'p-0'}`}>
       <div className="mx-auto w-full max-w-none pointer-events-auto">
         <div
           aria-hidden={isScrolled}
-          className={`overflow-hidden bg-amber-300 text-slate-900 transition-[max-height,opacity] duration-150 ease-out ${isScrolled ? 'max-h-0 opacity-0' : 'max-h-16 border-b-2 border-slate-900 opacity-100'}`}
+          className={`overflow-hidden bg-amber-300 text-slate-900 ${isScrolled ? 'max-h-0 opacity-0' : 'border-b-2 border-slate-900 opacity-100'}`}
         >
           <a
             href={withBasePath('/membership')}
-            aria-label="前往會員頁面，查看會員專屬功能"
-            className="flex min-h-10 items-center justify-center gap-2 px-4 py-2 text-center text-xs font-black transition hover:bg-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-inset sm:text-sm"
+            aria-label={`公告：${announcement.status}，${announcement.message}。查看會員方案：每月 NT$49，免廣告、免授權碼，解鎖完整功能`}
+            tabIndex={isScrolled ? -1 : 0}
+            className="flex min-h-10 flex-col items-center justify-center px-3 py-1 text-center text-xs font-black transition hover:bg-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-inset lg:flex-row lg:gap-3"
           >
+            <span className="flex w-full min-w-0 items-center justify-center gap-2 lg:w-auto lg:min-w-0">
             <Megaphone className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>{announcementMessage}</span>
+            <span className="shrink-0 rounded-md bg-white/80 px-2 py-1">{announcement.status}</span><span className="min-w-0 truncate leading-5">{announcement.message}</span>
+            </span>
+            <span className="flex min-h-6 max-w-full items-center justify-center gap-1 whitespace-normal break-words text-[10px] leading-5 text-purple-950 sm:text-xs lg:shrink-0 lg:border-l lg:border-slate-900/30 lg:pl-3">
+            <span>會員 NT$49／月：免廣告、免授權碼，解鎖完整功能</span>
+            <ArrowRight className="h-3 w-3 shrink-0" aria-hidden="true" />
+            </span>
           </a>
         </div>
         <header onMouseEnter={keepMenuOpen} onMouseLeave={closeMenuWithDelay} className={`relative bg-white/95 backdrop-blur-md flex items-center justify-between gap-2 transition-[border-radius,padding,box-shadow] duration-150 ease-out ${isScrolled ? 'rounded-[1.65rem] border-2 border-slate-900 p-2 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]' : 'rounded-none border-x-0 border-t-0 border-b-2 border-slate-900 p-2 sm:p-3 shadow-[0_2px_0px_0px_rgba(15,23,42,1)]'}`}>
@@ -157,7 +168,7 @@ export default function AppHeader({ isScrolled, onShareClick, onMenuClick, setAc
             </div>
           </a>
 
-          <nav aria-label="主要導覽" className={`${isCompactNavigation ? 'hidden' : 'flex'} items-center gap-1 rounded-2xl bg-slate-100/80 p-1.5`}>
+          <nav aria-label="主要導覽" className={`${isCompactNavigation ? 'hidden' : 'flex'} shrink-0 items-center gap-0.5 rounded-2xl bg-slate-100/80 p-1 xl:gap-1 xl:p-1.5`}>
             {navigationLinks.map(({ id, label, icon: Icon, iconColor }) => (
               <button
                 type="button"
@@ -168,9 +179,9 @@ export default function AppHeader({ isScrolled, onShareClick, onMenuClick, setAc
                 aria-haspopup="true"
                 aria-expanded={activeMenu === id}
                 aria-controls="desktop-mega-menu"
-                className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-black text-slate-700 transition hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 ${activeMenu === id ? 'bg-amber-200/80 text-slate-900 shadow-sm' : ''}`}
+                className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-2 py-2 text-sm font-black text-slate-700 transition hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 xl:px-3 ${activeMenu === id ? 'bg-amber-200/80 text-slate-900 shadow-sm' : ''}`}
               >
-                <Icon className={`h-4 w-4 ${iconColor}`} />
+                <Icon className={`hidden h-4 w-4 shrink-0 xl:block ${iconColor}`} />
                 {label}
               </button>
             ))}
@@ -206,8 +217,8 @@ export default function AppHeader({ isScrolled, onShareClick, onMenuClick, setAc
                       <a href="https://www.instagram.com/exam.tw/" target="_blank" rel="noreferrer" className="group flex items-center justify-between gap-2 px-4 py-3 text-xs font-black text-slate-600 transition hover:bg-white hover:text-pink-600" aria-label="前往 Instagram，新分頁開啟"><span className="flex min-w-0 items-center gap-2"><Instagram className="h-4 w-4 shrink-0" />Instagram</span><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors group-hover:bg-amber-300 group-hover:text-slate-900"><ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span></a>
                       <a href="https://www.threads.com/@exam.tw" target="_blank" rel="noreferrer" className="group flex items-center justify-between gap-2 px-4 py-3 text-xs font-black text-slate-600 transition hover:bg-white hover:text-slate-900" aria-label="前往 Threads，新分頁開啟"><span className="flex min-w-0 items-center gap-2"><ThreadsIcon className="h-4 w-4 shrink-0" />Threads</span><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors group-hover:bg-amber-300 group-hover:text-slate-900"><ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span></a>
                     </div>
-                    <a href={withBasePath('/support')} className="group flex items-center justify-between bg-rose-200 px-4 py-4 text-left text-slate-900 transition hover:bg-rose-300">
-                      <span className="min-w-0"><span className="block text-sm font-black">小額支持，升學資訊持續免費</span><span className="mt-0.5 block text-[11px] font-bold text-rose-950/70">陪更多學生安心找到方向</span></span>
+                    <a href={withBasePath('/support')} className="group flex items-center justify-between gap-3 bg-rose-200 px-4 py-4 text-left text-slate-900 transition hover:bg-rose-300">
+                      <span className="flex min-w-0 items-start gap-2.5"><Heart className="mt-0.5 h-5 w-5 shrink-0 fill-rose-500 text-rose-600 transition-transform group-hover:scale-110" aria-hidden="true" /><span className="min-w-0"><span className="block text-sm font-black">小額支持，升學資訊持續免費</span><span className="mt-0.5 block text-[11px] font-bold text-rose-950/70">陪更多學生安心找到方向</span></span></span>
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors group-hover:bg-amber-300 group-hover:text-slate-900"><ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
                     </a>
                   </div>

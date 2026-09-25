@@ -104,7 +104,7 @@ function corsHeaders(request: Request) {
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Credentials': 'true',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-payment-status-token',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Max-Age': '600',
     Vary: 'Origin',
@@ -121,7 +121,11 @@ const actionRateLimits: Record<string, { windowSeconds: number; maxRequests: num
   getVolunteerSchools: { windowSeconds: 60, maxRequests: 20 },
   createSharedReport: { windowSeconds: 60, maxRequests: 10 },
   getSharedReport: { windowSeconds: 60, maxRequests: 30 },
+  listOwnedShares: { windowSeconds: 60, maxRequests: 30 },
+  revokeOwnedShare: { windowSeconds: 60, maxRequests: 12 },
   getVolunteerShareCollaboration: { windowSeconds: 60, maxRequests: 30 },
+  getVolunteerVersions: { windowSeconds: 60, maxRequests: 30 },
+  restoreVolunteerVersion: { windowSeconds: 60, maxRequests: 12 },
   addVolunteerShareComment: { windowSeconds: 60, maxRequests: 12 },
   updateVolunteerShareChoices: { windowSeconds: 60, maxRequests: 12 },
   confirmVolunteerShareVersion: { windowSeconds: 60, maxRequests: 12 },
@@ -137,6 +141,7 @@ const actionRateLimits: Record<string, { windowSeconds: number; maxRequests: num
   saveMemberScoreRecord: { windowSeconds: 60, maxRequests: 12 },
   deleteMemberScoreRecord: { windowSeconds: 60, maxRequests: 12 },
   redeemLineLoginCode: { windowSeconds: 60, maxRequests: 10 },
+  redeemLiffIdToken: { windowSeconds: 60, maxRequests: 10 },
   revokeLineLoginSession: { windowSeconds: 60, maxRequests: 10 },
   deleteMembershipAccount: { windowSeconds: 3600, maxRequests: 3 },
   submitFeedback: { windowSeconds: 3600, maxRequests: 5 },
@@ -215,6 +220,14 @@ const ecpayUrlEncode = (value: string) => encodeURIComponent(value)
 const sha256 = async (value: string) => {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('').toUpperCase();
+};
+
+const sha256Base64Url = async (value: string) => {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 };
 
 const ecpayCheckMacValue = async (params: EcpayPayload, hashKey: string, hashIv: string) => {
@@ -324,18 +337,19 @@ async function getLineLoginSession(token: unknown) {
     .from('line_login_sessions')
     .select('line_user_id, display_name, picture_url, expires_at')
     .eq('token', sessionToken)
+    .eq('cookie_only', true)
     .gt('expires_at', new Date().toISOString())
     .maybeSingle();
   if (error) throw error;
   return data;
 }
 
-const lineSessionCookieName = 'line_membership_session';
+const lineSessionCookieName = '__Secure-line_membership_session_v2';
 const lineSessionCookie = (token: string, maxAge = 24 * 60 * 60) =>
   `${lineSessionCookieName}=${encodeURIComponent(token)}; HttpOnly; Secure; SameSite=None; Partitioned; Path=/functions/v1/backend; Max-Age=${maxAge}`;
 const supportPaymentStatusCookieName = 'support_payment_status';
 const supportPaymentStatusCookie = (token: string, maxAge = 24 * 60 * 60) =>
-  `${supportPaymentStatusCookieName}=${encodeURIComponent(token)}; HttpOnly; Secure; SameSite=None; Partitioned; Path=/functions/v1/backend; Max-Age=${maxAge}`;
+  `${supportPaymentStatusCookieName}=${encodeURIComponent(token)}; HttpOnly; Secure; SameSite=None; Path=/functions/v1/backend; Max-Age=${maxAge}`;
 
 function cookieValue(request: Request, name: string) {
   const prefix = `${name}=`;
@@ -1276,7 +1290,7 @@ function analysisReportV2(
   };
 }
 
-async function handleAction(payload: Record<string, any>, request: Request) {
+async function handleAction(payload: Record<string, any>, request: Request, responseHeaders: Record<string, string>) {
   switch (payload.action) {
     case 'wakeup':
       return { message: 'System is awake and ready!' };
@@ -1319,12 +1333,11 @@ async function handleAction(payload: Record<string, any>, request: Request) {
         .single();
       if (error || !payment?.status_lookup_token) throw error || new Error('Could not create payment tracking token.');
 
+      // Keep the lookup credential out of the response object entirely.
+      responseHeaders['Set-Cookie'] = supportPaymentStatusCookie(payment.status_lookup_token);
       return {
         actionUrl: config.actionUrl,
         fields: { ...fields, CheckMacValue: checkMacValue },
-        // This field is removed before the response body is returned. It is
-        // delivered only as an HttpOnly, short-lived cookie below.
-        supportPaymentStatusToken: payment.status_lookup_token,
       };
     }
 
@@ -1550,18 +1563,25 @@ async function handleAction(payload: Record<string, any>, request: Request) {
     case 'redeemLineLoginCode': {
       await pruneExpiredLineLoginData();
       const code = String(payload.code || '').trim();
+      const browserVerifier = String(payload.browserVerifier || '').trim();
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(code)) throw new Error('Invalid LINE login code.');
+      if (!/^[A-Za-z0-9_-]{43}$/.test(browserVerifier)) throw new Error('Invalid LINE login binding.');
       const { data, error } = await supabase
         .from('line_login_exchange_codes')
         .update({ used_at: new Date().toISOString() })
         .eq('code', code)
+        .eq('binding_version', 2)
+        .eq('binding_hash', await sha256Base64Url(browserVerifier))
         .is('used_at', null)
         .gt('expires_at', new Date().toISOString())
         .select('line_session_token')
         .maybeSingle();
       if (error) throw error;
       if (!data?.line_session_token) throw new Error('LINE login code has expired or was already used.');
-      return { authenticated: true, sessionToken: data.line_session_token };
+      // Legacy sessions may already have escaped through localStorage/JSON.
+      if (!await getLineLoginSession(data.line_session_token)) throw new Error('LINE session has expired. Please log in again.');
+      responseHeaders['Set-Cookie'] = lineSessionCookie(data.line_session_token);
+      return { authenticated: true };
     }
 
     case 'revokeLineLoginSession': {
@@ -1570,6 +1590,33 @@ async function handleAction(payload: Record<string, any>, request: Request) {
       const { error } = await supabase.from('line_login_sessions').delete().eq('token', sessionToken);
       if (error) throw error;
       return { revoked: true };
+    }
+
+    case 'redeemLiffIdToken': {
+      const idToken = String(payload.idToken || '').trim();
+      if (!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(idToken) || idToken.length > 4096) {
+        throw new Error('Invalid LIFF ID token.');
+      }
+      const channelId = Deno.env.get('LINE_CHANNEL_ID')?.trim();
+      if (!channelId) throw new Error('LINE LIFF login is unavailable.');
+      const verifyResponse = await fetch('https://api.line.me/oauth2/v2.1/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ id_token: idToken, client_id: channelId }),
+      });
+      if (!verifyResponse.ok) throw new Error('LIFF login verification failed.');
+      const profile = await verifyResponse.json() as { sub?: string; name?: string; picture?: string };
+      if (!profile.sub || !/^[A-Za-z0-9_-]{10,100}$/.test(profile.sub)) throw new Error('LIFF profile is invalid.');
+      const { data: session, error } = await supabase.from('line_login_sessions').insert({
+        line_user_id: profile.sub,
+        cookie_only: true,
+        display_name: profile.name || null,
+        picture_url: profile.picture || null,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      }).select('token').single();
+      if (error || !session?.token) throw error || new Error('Could not create LIFF session.');
+      responseHeaders['Set-Cookie'] = lineSessionCookie(session.token);
+      return { authenticated: true };
     }
 
     case 'deleteMembershipAccount': {
@@ -1582,6 +1629,32 @@ async function handleAction(payload: Record<string, any>, request: Request) {
       return data === true
         ? { deleted: true }
         : { deleted: false, reason: 'ACTIVE_MEMBERSHIP' };
+    }
+
+    case 'listOwnedShares': {
+      const session = await getLineLoginSession(lineSessionTokenFromCookie(request));
+      if (!session) return { loggedIn: false, shares: [], hasMore: false };
+      const offset = payload.offset ?? 0;
+      if (!Number.isSafeInteger(offset) || offset < 0 || offset > 100000) throw new Error('頁碼不正確。');
+      const { data, error } = await supabase.from('shared_reports')
+        .select('token, kind, created_at, expires_at, revoked_at, collaboration_key, collaboration_version')
+        .eq('owner_line_user_id', session.line_user_id)
+        .order('created_at', { ascending: false }).order('token', { ascending: false }).range(offset, offset + 50);
+      if (error) throw error;
+      return { loggedIn: true, hasMore: (data || []).length > 50, shares: (data || []).slice(0, 50).map(({ collaboration_key, ...share }) => ({ ...share, collaborationEnabled: Boolean(collaboration_key) })) };
+    }
+
+    case 'revokeOwnedShare': {
+      const session = await getLineLoginSession(lineSessionTokenFromCookie(request));
+      const token = String(payload.token || '');
+      if (!session || !uuidPattern.test(token)) throw new Error('請登入建立分享的帳號。');
+      // Scope the write itself to the owner; possession of a share token grants no management rights.
+      const { data, error } = await supabase.from('shared_reports')
+        .update({ revoked_at: new Date().toISOString() })
+        .eq('token', token).eq('owner_line_user_id', session.line_user_id).select('token').maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('找不到可管理的分享連結。');
+      return { revoked: true };
     }
 
     case 'createSharedReport': {
@@ -1701,57 +1774,35 @@ async function handleAction(payload: Record<string, any>, request: Request) {
       };
     }
 
-    case 'addVolunteerShareComment': {
-      const report = await collaborationReportForKey(payload.token, payload.editorKey);
-      const actorName = cleanCollaborationText(payload.actorName, 24);
-      const message = cleanCollaborationText(payload.message, 800);
-      if (!actorName || !message) throw new Error('請填寫姓名與留言內容。');
-      if (hasInappropriateContent(`${actorName} ${message}`)) throw new Error('留言含有不適當字詞，請調整後再送出。');
-      const { error } = await supabase.from('shared_report_collaboration_events').insert({
-        report_token: report.token, event_type: 'comment', actor_name: actorName, message, version: report.collaboration_version || 1,
-      });
-      if (error) throw error;
-      return { added: true };
-    }
-
-    case 'updateVolunteerShareChoices': {
-      const report = await collaborationReportForKey(payload.token, payload.editorKey);
-      const actorName = cleanCollaborationText(payload.actorName, 24);
-      const choices = validateVolunteerChoices(payload.choices);
-      if (!actorName) throw new Error('請先填寫你的稱呼。');
-      const nextPayload = { ...(report.payload as Record<string, unknown>), choices, updatedAt: new Date().toISOString() };
-      const nextVersion = Number(report.collaboration_version || 1) + 1;
-      const { data: updatedReport, error: updateError } = await supabase.from('shared_reports').update({
-        payload: nextPayload,
-        collaboration_version: nextVersion,
-        collaboration_confirmed_at: null,
-        collaboration_confirmed_by: null,
-      }).eq('token', report.token).eq('collaboration_version', report.collaboration_version || 1).select('token').maybeSingle();
-      if (updateError) throw updateError;
-      if (!updatedReport) throw new Error('志願清單已被其他人更新，請重新整理後再試。');
-      const { error: eventError } = await supabase.from('shared_report_collaboration_events').insert({
-        report_token: report.token, event_type: 'revision', actor_name: actorName,
-        message: `更新志願清單（${choices.length} 個志願）`, version: nextVersion,
-      });
-      if (eventError) throw eventError;
-      return { choices, version: nextVersion };
-    }
-
+    case 'getVolunteerVersions':
+    case 'restoreVolunteerVersion':
+    case 'addVolunteerShareComment':
+    case 'updateVolunteerShareChoices':
     case 'confirmVolunteerShareVersion': {
-      const report = await collaborationReportForKey(payload.token, payload.editorKey);
-      const actorName = cleanCollaborationText(payload.actorName, 24);
-      if (!actorName) throw new Error('請先填寫你的稱呼。');
-      const confirmedAt = new Date().toISOString();
-      const { error: updateError } = await supabase.from('shared_reports').update({
-        collaboration_confirmed_at: confirmedAt, collaboration_confirmed_by: actorName,
-      }).eq('token', report.token);
-      if (updateError) throw updateError;
-      const { error: eventError } = await supabase.from('shared_report_collaboration_events').insert({
-        report_token: report.token, event_type: 'confirmed', actor_name: actorName,
-        message: `確認第 ${report.collaboration_version || 1} 版志願清單`, version: report.collaboration_version || 1,
+      const token = String(payload.token || '');
+      const key = String(payload.editorKey || '');
+      if (!uuidPattern.test(token) || !uuidPattern.test(key)) throw new Error('Invalid collaboration link.');
+      const actionMap: Record<string, string> = {
+        getVolunteerVersions: 'history', restoreVolunteerVersion: 'restore',
+        addVolunteerShareComment: 'comment', updateVolunteerShareChoices: 'save', confirmVolunteerShareVersion: 'confirm',
+      };
+      const actor = cleanCollaborationText(payload.actorName, 24);
+      const note = cleanCollaborationText(payload.message || payload.note, 800);
+      if (hasInappropriateContent(`${actor} ${note}`)) throw new Error('請使用適當的稱呼及說明。');
+      const { data, error } = await supabase.rpc('manage_volunteer_version', {
+        p_token: token, p_key: key, p_action: actionMap[String(payload.action)],
+        p_expected: Number.isInteger(payload.expectedVersion) ? payload.expectedVersion : null,
+        p_actor: actor, p_note: note,
+        p_choices: payload.action === 'updateVolunteerShareChoices' ? validateVolunteerChoices(payload.choices) : null,
+        p_restore: Number.isInteger(payload.restoreVersion) ? payload.restoreVersion : null,
       });
-      if (eventError) throw eventError;
-      return { confirmedAt, confirmedBy: actorName, version: report.collaboration_version || 1 };
+      if (error?.message?.includes('VERSION_CONFLICT')) return { conflict: true };
+      if (error && ['PGRST202', '42883', '42P01'].includes(error.code)) throw new Error('COLLABORATION_NOT_READY');
+      if (error?.message === 'SHARE_UNAVAILABLE') throw new Error('COLLABORATION_UNAVAILABLE');
+      if (error?.message === 'INVALID_INPUT') throw new Error('COLLABORATION_INVALID_INPUT');
+      if (error?.message === 'VERSION_NOT_FOUND') throw new Error('COLLABORATION_VERSION_NOT_FOUND');
+      if (error) throw error;
+      return data;
     }
 
     case 'validateInvitationCode':
@@ -2176,7 +2227,8 @@ Deno.serve(async (request) => {
     if (!await consumeRateLimit(request, action)) {
       return json(request, { error: 'Too many requests. Please try again later.' }, 429);
     }
-    const result = await handleAction(payload, request);
+    const responseHeaders: Record<string, string> = { 'Cache-Control': 'no-store, private, max-age=0' };
+    const result = await handleAction(payload, request, responseHeaders);
 
     console.log({
       path,
@@ -2184,21 +2236,14 @@ Deno.serve(async (request) => {
       ms: Date.now() - start,
     });
 
-    const responseHeaders: HeadersInit = {};
     // Score records are personal education data. Do not let a browser, CDN or
     // shared device cache an API response after the user signs out.
-    if (action === 'getMemberScoreRecords' || action === 'saveMemberScoreRecord' || action === 'deleteMemberScoreRecord') {
+    if (['getMemberScoreRecords', 'saveMemberScoreRecord', 'deleteMemberScoreRecord',
+      'listOwnedShares', 'revokeOwnedShare', 'getSharedReport', 'getVolunteerShareCollaboration', 'getVolunteerVersions',
+      'restoreVolunteerVersion', 'updateVolunteerShareChoices', 'confirmVolunteerShareVersion'].includes(action)) {
       responseHeaders['Cache-Control'] = 'no-store, private, max-age=0';
       responseHeaders.Pragma = 'no-cache';
       responseHeaders.Expires = '0';
-    }
-    if (action === 'redeemLineLoginCode' && typeof result?.sessionToken === 'string') {
-      responseHeaders['Set-Cookie'] = lineSessionCookie(result.sessionToken);
-      delete result.sessionToken;
-    }
-    if (action === 'createEcpaySupportPayment' && typeof result?.supportPaymentStatusToken === 'string') {
-      responseHeaders['Set-Cookie'] = supportPaymentStatusCookie(result.supportPaymentStatusToken);
-      delete result.supportPaymentStatusToken;
     }
     if (action === 'getEcpaySupportPaymentStatus' && (result?.status === 'paid' || result?.status === 'failed')) {
       responseHeaders['Set-Cookie'] = supportPaymentStatusCookie('', 0);
@@ -2217,6 +2262,16 @@ Deno.serve(async (request) => {
     });
 
     const isInvalidRequest = error instanceof Error && error.message === 'Invalid JSON request body.';
+    const collaborationErrors: Record<string, { message: string; status: number }> = {
+      COLLABORATION_NOT_READY: { message: '共編版本服務尚未完成更新，請聯絡管理員套用志願版本資料庫更新並部署後端。', status: 503 },
+      COLLABORATION_UNAVAILABLE: { message: '共編連結已到期、撤銷或編輯權限已換發，請向建立者索取最新連結。', status: 403 },
+      COLLABORATION_INVALID_INPUT: { message: '請填寫稱呼並確認志願內容與留言格式。', status: 400 },
+      COLLABORATION_VERSION_NOT_FOUND: { message: '找不到要還原的版本，請重新讀取版本紀錄。', status: 404 },
+    };
+    const collaborationError = error instanceof Error ? collaborationErrors[error.message] : undefined;
+    if (collaborationError) return json(request, {
+      error: 'COLLABORATION_ERROR', code: 'SERVER_ERROR', message: collaborationError.message, requestId,
+    }, collaborationError.status, { 'Cache-Control': 'no-store' });
     return json(request, {
       error: isInvalidRequest ? 'INVALID_REQUEST' : 'SERVER_ERROR',
       code: isInvalidRequest ? 'INVALID_REQUEST' : 'SERVER_ERROR',

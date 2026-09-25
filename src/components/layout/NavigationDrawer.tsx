@@ -120,19 +120,32 @@ export const menuCategories: MenuCategory[] = [
     accent: 'border-amber-500',
     items: [
       { id: 'home', label: '落點分析', description: '輸入成績與條件，產生推薦清單', keywords: '首頁 落點 分析 會考 分數', icon: Calculator, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/' } },
+      { id: 'scoreRecords', label: '我的成績紀錄', description: '登入後保存模擬考與正式會考成績', keywords: '登入 帳號 成績 紀錄 模擬考 會考 保存', icon: History, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/score-records' } },
       { id: 'mockVolunteer', label: '模擬志願序', description: '把校科加入清單，練習排序', keywords: '志願序 模擬 排序 選填', icon: ListOrdered, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/mock-volunteer' } },
       { id: 'strategy', label: '志願選填攻略', description: '看夢幻、落點、安全區如何搭配', keywords: '志願 選填 策略 建議 攻略', icon: Lightbulb, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/strategy' } },
       { id: 'historicalStats', label: '歷年錄取統計', description: '參考各校歷年分數與趨勢', keywords: '歷年 錄取 分數 統計', icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/historical-stats' } },
-      { id: 'gradeLevel', label: '積分換算說明', description: '查會考等級如何換成積分、積點', keywords: '積分 換算 等級 A B C', icon: Scale, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/grade-level' } },
-      { id: 'scoringTaipei', label: '基北區計分規則', description: '基隆、臺北、新北的超額比序與會考換算', keywords: '基北 基隆 台北 臺北 新北 計分 規則 超額比序', icon: MapPinned, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/scoring-rules/taipei' } },
-      { id: 'scoringTaoyuan', label: '桃連區計分規則', description: '桃園、連江的超額比序與會考換算', keywords: '桃連 桃園 連江 計分 規則 超額比序', icon: MapPinned, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/scoring-rules/taoyuan' } },
-      { id: 'scoringCentral', label: '中投區計分規則', description: '臺中、南投的超額比序與會考換算', keywords: '中投 台中 臺中 南投 計分 規則 超額比序', icon: MapPinned, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/scoring-rules/central' } },
-      { id: 'scoringChanghua', label: '彰化區計分規則', description: '彰化的超額比序與會考換算', keywords: '彰化 計分 規則 超額比序', icon: MapPinned, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/scoring-rules/changhua' } },
-      { id: 'scoringChiayi', label: '嘉義區計分規則', description: '嘉義市、嘉義縣的超額比序與會考換算', keywords: '嘉義 嘉義市 嘉義縣 計分 規則 超額比序', icon: MapPinned, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/scoring-rules/chiayi' } },
-      { id: 'scoringTainan', label: '臺南區計分規則', description: '臺南的超額比序與會考換算', keywords: '台南 臺南 計分 規則 超額比序', icon: MapPinned, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/scoring-rules/tainan' } },
-      { id: 'scoringKaohsiung', label: '高雄區計分規則', description: '高雄的超額比序與會考換算', keywords: '高雄 計分 規則 超額比序', icon: MapPinned, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/scoring-rules/kaohsiung' } },
-      { id: 'scoringHsinchu', label: '竹苗區計分規則', description: '新竹、苗栗的超額比序與會考換算', keywords: '竹苗 新竹 苗栗 計分 規則 超額比序', icon: MapPinned, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/scoring-rules/hsinchu' } },
-      { id: 'fiveYearCollegeRules', label: '五專優先免試計分規則', description: '查看五專積分項目與同分比序參考', keywords: '五專 優先免試 聯合免試 積分 志願序 比序', icon: Medal, color: 'text-amber-600', bg: 'bg-amber-100', action: { type: 'route', href: '/five-year-college-rules' } },
+
+    ],
+  },
+  {
+    id: 'scoring',
+    label: '各區計分方式',
+    description: '各就學區計分、積分換算與五專比序',
+    icon: Calculator,
+    color: 'text-teal-600',
+    bg: 'bg-teal-100',
+    accent: 'border-teal-500',
+    items: [
+      { id: 'gradeLevel', label: '積分換算說明', description: '查會考等級如何換成積分、積點', keywords: '積分 換算 等級 A B C', icon: Scale, color: 'text-teal-600', bg: 'bg-teal-100', action: { type: 'route', href: '/grade-level' } },
+      { id: 'scoringTaipei', label: '基北區計分規則', description: '基隆、臺北、新北的超額比序與會考換算', keywords: '基北 基隆 台北 臺北 新北 計分 規則 超額比序', icon: MapPinned, color: 'text-teal-600', bg: 'bg-teal-100', action: { type: 'route', href: '/scoring-rules/taipei' } },
+      { id: 'scoringTaoyuan', label: '桃連區計分規則', description: '桃園、連江的超額比序與會考換算', keywords: '桃連 桃園 連江 計分 規則 超額比序', icon: MapPinned, color: 'text-teal-600', bg: 'bg-teal-100', action: { type: 'route', href: '/scoring-rules/taoyuan' } },
+      { id: 'scoringCentral', label: '中投區計分規則', description: '臺中、南投的超額比序與會考換算', keywords: '中投 台中 臺中 南投 計分 規則 超額比序', icon: MapPinned, color: 'text-teal-600', bg: 'bg-teal-100', action: { type: 'route', href: '/scoring-rules/central' } },
+      { id: 'scoringChanghua', label: '彰化區計分規則', description: '彰化的超額比序與會考換算', keywords: '彰化 計分 規則 超額比序', icon: MapPinned, color: 'text-teal-600', bg: 'bg-teal-100', action: { type: 'route', href: '/scoring-rules/changhua' } },
+      { id: 'scoringChiayi', label: '嘉義區計分規則', description: '嘉義市、嘉義縣的超額比序與會考換算', keywords: '嘉義 嘉義市 嘉義縣 計分 規則 超額比序', icon: MapPinned, color: 'text-teal-600', bg: 'bg-teal-100', action: { type: 'route', href: '/scoring-rules/chiayi' } },
+      { id: 'scoringTainan', label: '臺南區計分規則', description: '臺南的超額比序與會考換算', keywords: '台南 臺南 計分 規則 超額比序', icon: MapPinned, color: 'text-teal-600', bg: 'bg-teal-100', action: { type: 'route', href: '/scoring-rules/tainan' } },
+      { id: 'scoringKaohsiung', label: '高雄區計分規則', description: '高雄的超額比序與會考換算', keywords: '高雄 計分 規則 超額比序', icon: MapPinned, color: 'text-teal-600', bg: 'bg-teal-100', action: { type: 'route', href: '/scoring-rules/kaohsiung' } },
+      { id: 'scoringHsinchu', label: '竹苗區計分規則', description: '新竹、苗栗的超額比序與會考換算', keywords: '竹苗 新竹 苗栗 計分 規則 超額比序', icon: MapPinned, color: 'text-teal-600', bg: 'bg-teal-100', action: { type: 'route', href: '/scoring-rules/hsinchu' } },
+      { id: 'fiveYearCollegeRules', label: '五專優先免試計分規則', description: '查看五專積分項目與同分比序參考', keywords: '五專 優先免試 聯合免試 積分 志願序 比序', icon: Medal, color: 'text-teal-600', bg: 'bg-teal-100', action: { type: 'route', href: '/five-year-college-rules' } },
     ],
   },
   {
@@ -161,6 +174,7 @@ export const menuCategories: MenuCategory[] = [
     accent: 'border-violet-500',
     items: [
       { id: 'membership', label: '會員免廣告', description: '查看方案並用 LINE 安全確認資格', keywords: '會員 免廣告 LINE 付款 月費 年費 方案', icon: Crown, color: 'text-violet-600', bg: 'bg-violet-100', action: { type: 'route', href: '/membership' } },
+      { id: 'privacyCenter', label: '個資與分享管理中心', description: '查看分享期限、撤銷連結與管理資料', keywords: '個資 隱私 分享 期限 撤銷 刪除 資料', icon: ShieldCheck, color: 'text-violet-600', bg: 'bg-violet-100', action: { type: 'route', href: '/privacy-center' } },
       { id: 'membershipAccount', label: '我的會員帳號', description: '查看方案、到期日與登入狀態', keywords: '會員 帳號 到期 日 LINE 登入 資格', icon: UserCircle, color: 'text-violet-600', bg: 'bg-violet-100', action: { type: 'route', href: '/membership/account' } },
     ],
   },
@@ -173,6 +187,7 @@ export const menuCategories: MenuCategory[] = [
     bg: 'bg-violet-100',
     accent: 'border-violet-500',
     items: [
+      { id: 'officialLine', label: '加入官方 LINE', description: '加入好友，查看升學資訊與功能入口', keywords: 'line 賴 官方 好友 日程 提醒', icon: MessageCircleQuestion, color: 'text-violet-600', bg: 'bg-violet-100', action: { type: 'external', href: 'https://line.me/R/ti/p/@166zozmd' } },
       { id: 'officialVolunteer', label: '志願選填平台', description: '開啟外部志願選填平台', keywords: '志願 選填 外部 平台 官方', icon: MousePointerClick, color: 'text-violet-600', bg: 'bg-violet-100', action: { type: 'external', href: 'https://tyctw.github.io/volunteer/' } },
       { id: 'shared', label: '錄取分享', description: '開啟全國錄取結果分享平台', keywords: '共同 就學區 資料 外部 錄取 分享', icon: Share2, color: 'text-violet-600', bg: 'bg-violet-100', action: { type: 'external', href: 'https://tyctw.github.io/shared/' } },
       { id: 'score', label: '序位分享', description: '開啟會考積分與序位分享平台', keywords: '會考 積分 積點 外部 序位 分享', icon: BarChart4, color: 'text-violet-600', bg: 'bg-violet-100', action: { type: 'external', href: 'https://tyctw.github.io/score/' } },
@@ -228,19 +243,26 @@ export default function NavigationDrawer({ isOpen, onClose, setActiveModal }: Na
   const triggerRef = useRef<HTMLElement | null>(null);
   const hasHistoryEntryRef = useRef(false);
   const isMobileCategoryOpenRef = useRef(false);
+  const isClosingRef = useRef(false);
 
   // On touch devices, make the browser back gesture dismiss the drawer before
   // it leaves the current page. Closing by a UI control removes that temporary
   // history entry as well, so it does not consume an extra back press later.
   const closeDrawer = () => {
-    if (hasHistoryEntryRef.current) {
-      window.history.go(isMobileCategoryOpenRef.current ? -2 : -1);
-      return;
-    }
+    if (isClosingRef.current) return;
+    isClosingRef.current = true;
+    const historySteps = hasHistoryEntryRef.current
+      ? (isMobileCategoryOpenRef.current ? -2 : -1) : 0;
+    hasHistoryEntryRef.current = false;
+    isMobileCategoryOpenRef.current = false;
+    // A UI close must not depend on asynchronous (and sometimes throttled)
+    // history traversal delivering popstate on a mobile browser.
     onClose();
+    if (historySteps) window.history.go(historySteps);
   };
 
   const openMobileCategory = (category: MenuCategory) => {
+    if (isClosingRef.current || isMobileCategoryOpenRef.current) return;
     setMobileCategory(category);
     isMobileCategoryOpenRef.current = true;
     window.history.pushState(
@@ -287,7 +309,8 @@ export default function NavigationDrawer({ isOpen, onClose, setActiveModal }: Na
   useEffect(() => {
     if (!isOpen || !isCompactNavigationViewport()) return;
 
-    window.history.pushState(
+    // StrictMode replays effects; do not add a second entry for this instance.
+    if (!hasHistoryEntryRef.current) window.history.pushState(
       { ...(window.history.state ?? {}), navigationDrawerOpen: true, navigationDrawerLevel: 'root' },
       '',
       window.location.href,
@@ -295,6 +318,7 @@ export default function NavigationDrawer({ isOpen, onClose, setActiveModal }: Na
     hasHistoryEntryRef.current = true;
 
     const handlePopState = (event: PopStateEvent) => {
+      if (isClosingRef.current) return;
       const state = event.state as { navigationDrawerOpen?: boolean; navigationDrawerLevel?: string } | null;
       if (state?.navigationDrawerOpen && state.navigationDrawerLevel === 'root') {
         isMobileCategoryOpenRef.current = false;

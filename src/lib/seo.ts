@@ -58,6 +58,10 @@ type PageMeta = {
 };
 
 const pageMetadata: Record<string, PageMeta> = {
+  '/vocational-compare': {
+    title: '職群比較｜高中職課程、升學與職涯方向比較',
+    description: '選擇 2～3 個技術型高中職群，從主要課程、相關科別、升學方向、可能職涯與 Holland 興趣比較差異，並查詢開設學校，探索適合自己的升學方向。',
+  },
   '/': {
     title: '免費會考落點分析｜你的成績，能選哪些高中職？',
     description: defaultDescription,
@@ -81,6 +85,10 @@ const pageMetadata: Record<string, PageMeta> = {
   '/guide/choose': {
     title: '我要選志願｜會考志願選填工具說明｜全國會考落點分析',
     description: '依成績、興趣與志願順序整理選填方向，使用落點分析與模擬志願序完成規劃。',
+  },
+  '/guide/scoring': {
+    title: '各區計分方式｜會考積分換算與超額比序｜全國會考落點分析',
+    description: '集中查詢基北、桃連、竹苗、中投、彰化、嘉義、臺南、高雄計分規則，以及積分換算與五專優先免試比序。',
   },
   '/guide/plan': {
     title: '我要規劃升學｜探索興趣與升學時程｜全國會考落點分析',
@@ -119,8 +127,8 @@ const pageMetadata: Record<string, PageMeta> = {
     description: '彙整歷年國中教育會考統計資料與級距資訊，協助考生與家長掌握成績分布及升學趨勢。',
   },
   '/important-dates': {
-    title: '會考與免試入學重要日程｜升學時程整理',
-    description: '整理國中教育會考、成績查詢與免試入學志願選填的重要時間點；實際日期請以官方公告為準。',
+    title: '116 學年度重要日程｜會考、高中職與五專入學時程',
+    description: '依教育部日程表整理 116 年（2027 年）2 至 7 月會考、高中職與五專各入學管道：5 月 15、16 日會考、6 月 4 日成績查詢、7 月 6 日免試入學放榜，並附完整報名、選填及報到日程。',
   },
   '/news': {
     title: '最新消息｜全國會考落點分析',
@@ -169,6 +177,12 @@ const pageMetadata: Record<string, PageMeta> = {
     title: '我的會員帳號｜全國會考落點分析',
     description: '查看目前會員資格與到期時間。',
     noindex: true,
+  },
+  '/privacy-center': {
+    title: '個資與分享管理中心｜全國會考落點分析',
+    description: '集中管理分享期限、撤銷連結、本機升學資料與個人資料管理入口。',
+    noindex: true,
+    nofollow: true,
   },
   '/membership/success': {
     title: '會員付款完成｜全國會考落點分析',
