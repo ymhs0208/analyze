@@ -1,0 +1,99 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Debug environment
+        run: |
+          echo "Node version:"
+          node --version
+
+          echo "NPM version:"
+          npm --version
+
+          echo "Project files:"
+          ls -la
+
+          echo "Dist folder:"
+          ls -la dist 2>/dev/null || echo "dist folder does not exist yet"
+
+      - name: Verify login and payment credential security
+        run: |
+          for test_file in security-audit/line-login-security.test.mjs security-audit/cookie-session-security.test.mjs security-audit/support-payment-security.test.mjs; do
+            if [ ! -f "$test_file" ]; then
+              echo "::error file=$test_file::Required security test is missing from the checkout."
+              exit 1
+            fi
+          done
+          node --test security-audit/line-login-security.test.mjs security-audit/cookie-session-security.test.mjs security-audit/support-payment-security.test.mjs
+
+      - name: Build production site
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Verify LINE login binding is included
+        run: |
+          if ! grep -q "browserVerifier" dist/auth-fragment-guard.js || ! grep -R -q "browserChallenge" dist/assets; then
+            echo "ERROR: browser-bound LINE login code is missing from the build"
+            exit 1
+          fi
+
+      - name: Verify build output
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "ERROR: dist folder not found"
+            exit 1
+          fi
+
+          echo "Build output:"
+          ls -la dist
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
