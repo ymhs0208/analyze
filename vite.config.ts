@@ -198,8 +198,12 @@ function staticRouteHtml(indexHtml: string, route: string) {
     .replace(/(<meta name="googlebot" content=")[^"]*("\s*\/?>)/, '$1noindex, nofollow$2');
 }
 
+let buildBase = '/';
 const staticRouteEntries = () => ({
   name: 'static-route-entries',
+  configResolved(config: { base: string }) {
+    buildBase = config.base;
+  },
   // `closeBundle` can run before Vite has written the client output in CI.
   // Generate route entries only after the output directory is available.
   writeBundle(outputOptions: { dir?: string }) {
@@ -211,6 +215,10 @@ const staticRouteEntries = () => ({
     }
 
     const indexHtml = fs.readFileSync(indexFile, 'utf8');
+    // Pages uses its built-in SPA fallback only when no top-level 404 exists.
+    if (buildBase === '/') {
+      fs.rmSync(path.join(outputDir, '404.html'), { force: true });
+    }
     for (const route of seoRoutes) {
       const routeDir = path.join(outputDir, route);
       fs.mkdirSync(routeDir, { recursive: true });
@@ -226,7 +234,7 @@ export default defineConfig(({mode}) => {
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
     },
-    base: '/spare/',
+    base: env.VITE_BASE_PATH || '/',
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

@@ -21,7 +21,9 @@ VITE_SUPABASE_URL=https://<你的專案>.supabase.co
 VITE_SUPABASE_ANON_KEY=<Supabase publishable／anon key>
 ```
 
-`public/_headers` 會在 Pages 回應中加入 CSP、反嵌入與其他安全標頭。Pages 專案請在 Dashboard 啟用 SPA fallback；Workers Builds 已由 `wrangler.jsonc` 的靜態資產設定自動處理單頁路由，不需要 `_redirects`。
+`public/_headers` 會在 Pages 與 Workers 靜態資產回應中加入 CSP、反嵌入與其他安全標頭。根目錄建置會移除 GitHub Pages 專用的 `404.html`，讓 Pages 自動使用 SPA fallback；Workers Builds 由 `wrangler.jsonc` 處理單頁路由，不需要 `_redirects`。
+
+預設建置路徑為 `/`；GitHub Pages 工作流程另設 `VITE_BASE_PATH=/spare/`。請將上述 Supabase 變數設在 Cloudflare 的建置環境，前端才能使用會員、付款與資料 API。只有 `VITE_SUPABASE_ANON_KEY`（公開金鑰）可提供給前端，不可填入 service role key。
 
 ## 上線前同步更新
 
@@ -48,5 +50,7 @@ ECPay callback 仍維持 Supabase `ecpay-callback` Function；不需放入 Cloud
 | Worker name | `analyze` |
 | Build command | `npm ci && npm run build` |
 | Deploy command | `npx wrangler deploy` |
+
+本專案已鎖定 Wrangler 版本，可先執行 `npm run build`，再用 `npx wrangler deploy --dry-run` 驗證部署設定。Cloudflare 必須先連接本儲存庫的 `main` 分支，推送才會觸發自動部署。
 
 Worker 會提供 `dist` 靜態資產、處理單頁路由回退，並在 HTTP 回應實際加入 CSP 與反嵌入安全標頭。
