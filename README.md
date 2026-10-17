@@ -51,6 +51,8 @@ ECPay callback 仍維持 Supabase `ecpay-callback` Function；不需放入 Cloud
 | Build command | `npm ci && npm run build` |
 | Deploy command | `npx wrangler deploy` |
 
-本專案已鎖定 Wrangler 版本，可先執行 `npm run build`，再用 `npx wrangler deploy --dry-run` 驗證部署設定。Cloudflare 必須先連接本儲存庫的 `main` 分支，推送才會觸發自動部署。
+`wrangler.jsonc` 已設定 `build.command: npm run build`，執行 `npx wrangler deploy` 時會先產生 `dist`，因此 Workers Builds 的 Build command 可以留空，避免重複建置。依賴仍由 Cloudflare 自動安裝。
+
+本專案已鎖定 Wrangler 版本，可直接用 `npx wrangler deploy --dry-run` 驗證建置與部署設定。Cloudflare 必須先連接本儲存庫的 `main` 分支，推送才會觸發自動部署。
 
 Worker 會提供 `dist` 靜態資產、處理單頁路由回退，並在 HTTP 回應實際加入 CSP 與反嵌入安全標頭。
