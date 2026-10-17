@@ -1,8 +1,9 @@
 import React, { Suspense, useState, useEffect, useLayoutEffect } from "react";
 import { parseLineGuideImport } from "./lib/lineGuide";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, MotionConfig } from "motion/react";
 import {
   MapPin,
+  CalendarDays,
   User,
   BookOpen,
   Calculator,
@@ -76,6 +77,7 @@ import NavigationDrawer from "./components/layout/NavigationDrawer";
 import Footer from "./components/layout/Footer";
 import HeroBanner from "./components/layout/HeroBanner";
 import MembershipPromo from "./components/MembershipPromo";
+import "./components/home-page.css";
 import {
   formatSchoolOwnership,
   getSchoolOwnershipKey,
@@ -99,9 +101,6 @@ const HollandTestModal = React.lazy(
 const ExportModal = React.lazy(() => import("./components/ExportModal"));
 const HistoricalStatsModal = React.lazy(
   () => import("./components/HistoricalStatsModal"),
-);
-const ScoreInquiryModal = React.lazy(
-  () => import("./components/ScoreInquiryModal"),
 );
 const SharePlatformModal = React.lazy(
   () => import("./components/SharePlatformModal"),
@@ -391,7 +390,6 @@ export default function App() {
     | "sharePlatform"
     | "strategy"
     | "historicalStats"
-    | "scoreInquiry"
     | "savedScoreImport"
     | null
   >(null);
@@ -413,13 +411,16 @@ export default function App() {
   const [isScoreAccountLoggedIn, setIsScoreAccountLoggedIn] = useState<
     boolean | null
   >(null);
-  const [scoreImportNotice, setScoreImportNotice] = useState("");
+  const [scoreImportNotice, setScoreImportNotice] = useState<{
+    message: string;
+    tone: "success" | "error";
+  } | null>(null);
 
   useEffect(() => {
     const imported = parseLineGuideImport(window.location.hash);
     if (!imported) return;
     setFormData((current) => ({ ...current, ...imported }));
-    setScoreImportNotice("已帶入 LINE 逐步操作的就學區與成績，請確認後再開始分析。");
+    setScoreImportNotice({ message: "已帶入 LINE 逐步操作的就學區與成績，請確認後再開始分析。", tone: "success" });
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
   }, []);
 
@@ -564,13 +565,13 @@ export default function App() {
       social: record.scores.social,
       composition: String(record.scores.composition),
     }));
-    setScoreImportNotice(`已帶入「${record.title}」的成績。`);
+    setScoreImportNotice({ message: `已帶入「${record.title}」的成績。`, tone: "success" });
     setActiveModal(null);
   };
 
   const loginForSavedScores = () => {
     if (!import.meta.env.VITE_SUPABASE_URL) {
-      setScoreImportNotice("登入服務尚未設定，請稍後再試。");
+      setScoreImportNotice({ message: "登入服務尚未設定，請稍後再試。", tone: "error" });
       return;
     }
     startLineLogin('/');
@@ -578,7 +579,7 @@ export default function App() {
 
   useEffect(() => {
     if (!scoreImportNotice) return;
-    const timer = window.setTimeout(() => setScoreImportNotice(""), 3_000);
+    const timer = window.setTimeout(() => setScoreImportNotice(null), scoreImportNotice.tone === "error" ? 6_000 : 4_000);
     return () => window.clearTimeout(timer);
   }, [scoreImportNotice]);
 
@@ -820,23 +821,37 @@ export default function App() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-slate-50 font-sans text-slate-900 selection:bg-indigo-100">
+    <MotionConfig reducedMotion="user">
+    <div className="home-page relative flex min-h-screen flex-col overflow-hidden bg-slate-50 font-sans text-slate-900 selection:bg-indigo-100">
       <a href="#main-content" className="skip-link">
         跳到主要內容
       </a>
       {scoreImportNotice && (
         <div
-          role="status"
-          className="fixed bottom-5 left-1/2 z-[200] flex w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 items-start gap-3 rounded-2xl border-2 border-slate-900 bg-white px-4 py-3 text-sm font-black text-slate-950 shadow-[4px_4px_0_#0f172a]"
+          role={scoreImportNotice.tone === "error" ? "alert" : "status"}
+          className={`home-floating-notice home-floating-notice--${scoreImportNotice.tone}`}
         >
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-400 text-slate-950"><Check className="h-5 w-5" /></span>
-          <span className="pt-1 leading-5">{scoreImportNotice}</span>
+          <span className="home-floating-notice__icon" aria-hidden="true">
+            {scoreImportNotice.tone === "error" ? <AlertCircle size={21} strokeWidth={2.2} /> : <Check size={21} strokeWidth={2.2} />}
+          </span>
+          <span className="home-floating-notice__content">
+            <strong>{scoreImportNotice.tone === "error" ? "登入提醒" : "已完成"}</strong>
+            <span>{scoreImportNotice.message}</span>
+          </span>
+          <button
+            type="button"
+            className="home-floating-notice__close"
+            aria-label="關閉通知"
+            onClick={() => setScoreImportNotice(null)}
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
         </div>
       )}
 
       {/* Modern Background Blur Orbs */}
-      <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-indigo-300/20 rounded-full blur-[100px] pointer-events-none"></div>
-      <div className="absolute top-[10%] right-[-10%] w-[500px] h-[500px] bg-sky-300/20 rounded-full blur-[100px] pointer-events-none"></div>
+      <div className="home-background-orb absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-indigo-300/20 rounded-full blur-[100px] pointer-events-none"></div>
+      <div className="home-background-orb absolute top-[10%] right-[-10%] w-[500px] h-[500px] bg-sky-300/20 rounded-full blur-[100px] pointer-events-none"></div>
 
       <AppHeader
         isScrolled={isScrolled}
@@ -848,7 +863,8 @@ export default function App() {
       <main
         id="main-content"
         aria-label="主要內容"
-        className="relative z-10 mx-auto mt-32 w-full max-w-[1400px] flex-1 space-y-8 px-4 sm:mt-40 sm:px-6 lg:px-8"
+        tabIndex={-1}
+        className="home-main relative z-10 mx-auto mt-32 w-full max-w-[1400px] flex-1 space-y-8 px-4 sm:mt-40 sm:px-6 lg:px-8"
       >
         <HeroBanner />
 
@@ -865,14 +881,14 @@ export default function App() {
         )}
 
         {/* Bento Grid Form Section */}
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 xl:gap-10">
+        <div id="analysis-form" role="region" aria-label="落點分析資料填寫" className="home-analysis-grid grid grid-cols-1 gap-8 lg:grid-cols-12 xl:gap-10">
           {/* Left Column: Basic Info & Region */}
-          <div className="lg:col-span-4 space-y-4">
+          <div className="home-form-sidebar lg:col-span-4 space-y-4">
             {/* Card: Auth */}
             <motion.section
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="relative p-6 bg-[#fffbea] border-[3px] border-slate-900 rounded-3xl shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] flex flex-col overflow-hidden"
+              className="home-auth-panel relative p-6 bg-[#fffbea] border-[3px] border-slate-900 rounded-3xl shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] flex flex-col overflow-hidden"
             >
               <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 mb-2 relative z-10">
                 <div className="w-8 h-8 rounded-full bg-amber-100 border-2 border-slate-900 flex items-center justify-center">
@@ -884,23 +900,13 @@ export default function App() {
                 輸入授權碼後，即可使用完整落點分析與志願建議；會員可直接略過。
               </p>
 
-              {/* Announcement */}
-              <div className={`relative z-10 mb-5 overflow-hidden rounded-2xl border-2 border-slate-900 bg-amber-50 shadow-[2px_2px_0_#0f172a]${memberAccess ? " hidden" : ""}`}>
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-900 bg-amber-200 px-4 py-2.5">
-                  <span className="inline-flex items-center gap-2 text-xs font-black tracking-wide"><span aria-hidden="true">📢</span>限時公告</span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-900 bg-white px-2.5 py-1 text-[11px] font-bold text-emerald-800"><span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-emerald-600" />免費開放中</span>
-                </div>
-                <div className="p-4 sm:p-5">
-                  <h3 className="text-xl font-black leading-snug tracking-tight text-slate-900">進階功能，限時免費體驗</h3>
-                  <p className="mt-2 text-sm leading-7 text-slate-600">即日起至 <time dateTime="2026-12-30" className="whitespace-nowrap font-black text-slate-900 underline decoration-amber-300 decoration-4 underline-offset-2">2026/12/30</time> 前，提供免費使用。</p>
-                  <div className="mt-4 border-t border-dashed border-amber-300 pt-4">
-                    <p className="text-xs font-medium leading-6 text-slate-600">點擊下方邀請碼，一鍵填入並解鎖所有進階功能。</p>
-                    <button type="button" onClick={() => updateForm("invitationCode", "TYCTW")} aria-label="填入免費邀請碼 TYCTW" className="mt-2 flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border-2 border-slate-900 bg-white px-4 py-3 text-left shadow-[2px_2px_0_#0f172a] transition hover:bg-amber-100 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2">
-                      <span><span className="block text-[10px] font-bold tracking-widest text-slate-500">免費邀請碼</span><span className="mt-0.5 block font-mono text-2xl font-black tracking-[0.16em] text-indigo-700">TYCTW</span></span>
-                      <span aria-live="polite" className={`rounded-lg px-3 py-2 text-xs font-bold ${formData.invitationCode === "TYCTW" ? "bg-emerald-100 text-emerald-800" : "bg-slate-900 text-white"}`}>{formData.invitationCode === "TYCTW" ? "已填入 ✓" : "一鍵填入 →"}</span>
-                    </button>
-                  </div>
-                </div>
+              <div className={`home-free-access relative z-10 mb-5${memberAccess ? " hidden" : ""}`}>
+                <h3>進階功能，限時免費體驗</h3>
+                <p className="home-free-access-date"><CalendarDays aria-hidden="true" size={16} /><span>免費使用至 <time dateTime="2026-12-30">2026/12/30</time></span></p>
+                <button type="button" onClick={() => updateForm("invitationCode", "TYCTW")} aria-label={formData.invitationCode === "TYCTW" ? "免費邀請碼 TYCTW 已填入" : "填入免費邀請碼 TYCTW"} className="home-free-code">
+                  <span className="home-free-code-value"><small>免費邀請碼</small><strong>TYCTW</strong></span>
+                  <span aria-live="polite" className={`home-free-code-action${formData.invitationCode === "TYCTW" ? " is-applied" : ""}`}>{formData.invitationCode === "TYCTW" ? <><Check aria-hidden="true" size={17} />已填入</> : <>一鍵填入<ArrowRight aria-hidden="true" size={17} /></>}</span>
+                </button>
               </div>
 
               {memberAccess && (
@@ -915,6 +921,7 @@ export default function App() {
                 <input
                   id="invitation-code"
                   type="text"
+                  aria-describedby={!memberAccess ? "invitation-code-help" : undefined}
                   placeholder={
                     memberAccess
                       ? "會員資格已確認，無需輸入授權碼"
@@ -955,7 +962,7 @@ export default function App() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 }}
-              className="p-6 bg-emerald-50 border-[3px] border-slate-900 rounded-3xl shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] space-y-6 relative overflow-hidden"
+              className="home-profile-panel p-6 bg-emerald-50 border-[3px] border-slate-900 rounded-3xl shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] space-y-6 relative overflow-hidden"
             >
               <div className="relative z-10">
                 <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 mb-2">
@@ -967,7 +974,7 @@ export default function App() {
                 <p className="text-xs font-bold text-slate-500 mb-4">
                   我們將根據您的身分提供合適的落點建議
                 </p>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-3" role="group" aria-label="使用者身份">
                   {[
                     { id: "student", label: "我是學生", icon: GraduationCap },
                     { id: "teacher", label: "我是老師", icon: Presentation },
@@ -1071,33 +1078,36 @@ export default function App() {
                 </div>
                 {formData.schoolType === "職業類科" && (
                   <div>
-                    <div className="flex items-center justify-between mt-4 mb-3">
-                      <label className="text-sm font-black text-slate-900 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 border border-slate-900 inline-block"></span>
+                    <div className="home-vocational-heading">
+                      <span className="home-vocational-label">
+                        <span className="home-vocational-dot" aria-hidden="true" />
                         職業群別選擇
-                      </label>
+                      </span>
                       <button
+                        type="button"
                         onClick={() => {
                           window.location.href = withBasePath(
                             "/vocational-encyclopedia",
                           );
                         }}
-                        className="flex items-center gap-1 text-xs font-bold text-emerald-600 underline decoration-2 decoration-emerald-400 underline-offset-2 transition-transform hover:text-emerald-700 active:scale-95"
+                        className="home-vocational-help"
                       >
                         <BookOpen className="w-3 h-3" />
                         職群/科系深入介紹百科
                       </button>
                     </div>
                     <button
+                      type="button"
                       onClick={() => setIsVocationalOpen(true)}
-                      className="w-full px-4 py-3 rounded-xl bg-white border-2 border-slate-900 focus:outline-none transition-all font-bold text-left shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:bg-emerald-50 active:translate-y-1 active:shadow-none flex justify-between items-center"
+                      className="home-vocational-trigger"
+                      aria-haspopup="dialog"
                     >
-                      <span className="text-slate-900">
+                      <span>
                         {vocationalGroups.includes("all")
-                          ? "全部選擇"
+                          ? "不限職業群別"
                           : `已選擇 ${vocationalGroups.length} 項群別`}
                       </span>
-                      <ChevronRight className="w-4 h-4 text-slate-500" />
+                      <ChevronRight className="h-4 w-4" aria-hidden="true" />
                     </button>
                   </div>
                 )}
@@ -1106,13 +1116,13 @@ export default function App() {
           </div>
 
           {/* Center/Right Column: Region & Scores */}
-          <div className="lg:col-span-8 flex flex-col gap-4">
+          <div className="home-form-primary lg:col-span-8 flex flex-col gap-4">
             {/* Region Select Button */}
             <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="p-6 bg-white border-[1.5px] border-slate-900 rounded-3xl shadow-[5px_5px_0px_0px_rgba(15,23,42,1)]"
+              className="home-region-panel p-6 bg-white border-[1.5px] border-slate-900 rounded-3xl shadow-[5px_5px_0px_0px_rgba(15,23,42,1)]"
             >
               <div>
                 <div>
@@ -1134,7 +1144,8 @@ export default function App() {
                     onClick={() => setIsRegionOpen(true)}
                     aria-haspopup="dialog"
                     aria-expanded={isRegionOpen}
-                    className="group flex-1 px-4 sm:px-6 py-4 rounded-2xl border-2 border-slate-900 flex items-center justify-between gap-2 sm:gap-4 font-black transition-all bg-amber-100 text-amber-900 hover:bg-amber-200 active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] active:shadow-none"
+                    aria-label={formData.region ? `目前就學區：${ALL_REGIONS.find((r) => r.id === formData.region)?.name || "未知區域"}，按下以重新選擇` : "選擇就學區"}
+                    className="group flex-1 px-4 sm:px-6 py-4 rounded-2xl flex items-center justify-between gap-2 sm:gap-4 font-black transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       {formData.region ? (
@@ -1148,7 +1159,7 @@ export default function App() {
                         <span className="text-lg sm:text-xl">選擇就學區</span>
                       )}
                     </div>
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-amber-700 transition-colors group-hover:bg-slate-900 group-hover:text-white">
+                    <span className="home-region-arrow flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors">
                       <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                     </span>
                   </button>
@@ -1173,7 +1184,7 @@ export default function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="p-6 sm:p-8 bg-sky-100 border-[1.5px] border-slate-900 rounded-3xl shadow-[5px_5px_0px_0px_rgba(15,23,42,1)]"
+              className="home-scores-panel p-6 sm:p-8 bg-sky-100 border-[1.5px] border-slate-900 rounded-3xl shadow-[5px_5px_0px_0px_rgba(15,23,42,1)]"
             >
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <div>
@@ -1193,7 +1204,7 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => setActiveModal("savedScoreImport")}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-indigo-600 px-4 py-2.5 text-sm font-black text-white shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] transition hover:-translate-y-0.5 hover:bg-indigo-500 active:translate-y-0 active:shadow-none sm:w-auto"
+                      className="home-score-action home-score-action-primary"
                     >
                       <History className="h-4 w-4" />
                       帶入已儲存成績
@@ -1204,7 +1215,7 @@ export default function App() {
                       <button
                         type="button"
                         onClick={loginForSavedScores}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-4 py-2.5 text-sm font-black text-indigo-800 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] transition hover:-translate-y-0.5 hover:bg-indigo-50 active:translate-y-0 active:shadow-none sm:w-auto"
+                        className="home-score-action"
                       >
                         <User className="h-4 w-4" />
                         登入後儲存、帶入成績
@@ -1219,7 +1230,7 @@ export default function App() {
                             withBasePath("/score-records"),
                           );
                         }}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-4 py-2.5 text-sm font-black text-indigo-800 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] transition hover:-translate-y-0.5 hover:bg-indigo-50 active:translate-y-0 active:shadow-none sm:w-auto"
+                        className="home-score-action"
                       >
                         <History className="h-4 w-4" />
                         前往儲存成績
@@ -1228,7 +1239,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 sm:gap-4">
+              <div className="home-subject-grid flex flex-col gap-3 sm:gap-4">
                 {[
                   {
                     id: "chinese",
@@ -1263,7 +1274,7 @@ export default function App() {
                     icon: Activity,
                     color: "text-emerald-600",
                     bgBorder:
-                      "bg-emerald-50 border-emerald-300 focus:ring-emerald-400 focus:border-emerald-400 hover:border-emerald-400",
+                      "bg-white border-slate-300 focus:ring-slate-300 focus:border-slate-500 hover:border-slate-400",
                     theme: "bg-white",
                   },
                   {
@@ -1443,7 +1454,7 @@ export default function App() {
       </main>
 
       {/* Floating Action Bar */}
-      <div className="sticky bottom-6 left-0 right-0 w-full px-4 z-50 pointer-events-none mt-8">
+      <div className="home-analyze-bar sticky bottom-6 left-0 right-0 w-full px-4 z-50 pointer-events-none mt-8">
         <div className="max-w-2xl mx-auto pointer-events-auto">
           <div className="relative group">
             <button
@@ -1452,7 +1463,8 @@ export default function App() {
               onClick={handleAnalyze}
               disabled={status === "auth" || status === "quantum"}
               aria-busy={status === "auth" || status === "quantum"}
-              className="w-full relative flex items-center justify-center bg-amber-400 border-4 border-slate-950 text-slate-950 shadow-[6px_6px_0px_0px_rgba(15,23,42,1)] sm:shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] rounded-2xl py-4 sm:py-5 px-6 transition-all hover:-translate-y-1.5 hover:bg-amber-300 hover:shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] sm:hover:shadow-[10px_10px_0px_0px_rgba(15,23,42,1)] active:translate-y-1 active:shadow-[1px_1px_0px_0px_rgba(15,23,42,1)] disabled:bg-slate-400 disabled:shadow-none disabled:translate-y-2 overflow-visible"
+              aria-label={status === "auth" || status === "quantum" ? "正在分析，請稍候" : "立即落點分析"}
+              className="home-analyze-button relative flex w-full items-center justify-center overflow-visible rounded-2xl px-6 py-4 sm:py-5"
             >
               {status === "quantum" ? (
                 <motion.div
@@ -1463,14 +1475,14 @@ export default function App() {
                 </motion.div>
               ) : (
                 <div className="flex items-center gap-3 sm:gap-4">
-                  <div className="bg-slate-900 text-amber-400 p-1.5 sm:p-2 rounded-xl">
+                  <div className="rounded-xl p-1.5 sm:p-2">
                     <Target className="w-6 h-6 sm:w-7 sm:h-7" />
                   </div>
                   <span className="text-3xl sm:text-4xl font-black tracking-tight">
                     立即落點分析
                   </span>
                   <ArrowRight
-                    strokeWidth={4.5}
+                    strokeWidth={3}
                     className="w-7 h-7 sm:w-8 sm:h-8"
                   />
                 </div>
@@ -1479,6 +1491,31 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      <section className="home-next-section relative z-10 mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-8" aria-labelledby="home-next-title">
+        <div className="home-next-heading">
+          <span className="home-next-eyebrow">讓選擇更有方向</span>
+          <h2 id="home-next-title">分析完，下一步怎麼選？</h2>
+          <p>從學校、時程到升學路線，把重要資訊看清楚，再決定你的下一步。</p>
+        </div>
+        <div className="home-next-grid">
+          <a href={withBasePath('/search')}>
+            <span className="home-next-card-top"><span className="home-next-icon"><Search aria-hidden="true" size={24} /></span><span className="home-next-number" aria-hidden="true">01</span></span>
+            <span className="home-next-card-copy"><strong>還有哪些學校值得放進志願？</strong><small>探索高中職與科別，發現更多適合自己的選擇。</small></span>
+            <span className="home-next-link-label"><span>探索學校</span><ArrowRight aria-hidden="true" size={18} /></span>
+          </a>
+          <a href={withBasePath('/important-dates')}>
+            <span className="home-next-card-top"><span className="home-next-icon"><CalendarDays aria-hidden="true" size={24} /></span><span className="home-next-number" aria-hidden="true">02</span></span>
+            <span className="home-next-card-copy"><strong>重要日期，別等錯過才發現</strong><small>會考、報名到志願選填，一次掌握接下來的時程。</small></span>
+            <span className="home-next-link-label"><span>查看日程</span><ArrowRight aria-hidden="true" size={18} /></span>
+          </a>
+          <a href={withBasePath('/school-types')}>
+            <span className="home-next-card-top"><span className="home-next-icon"><Building2 aria-hidden="true" size={24} /></span><span className="home-next-number" aria-hidden="true">03</span></span>
+            <span className="home-next-card-copy"><strong>普通科或技職，哪條路適合你？</strong><small>看懂不同學校類型的特色，找到更喜歡的學習方向。</small></span>
+            <span className="home-next-link-label"><span>了解差異</span><ArrowRight aria-hidden="true" size={18} /></span>
+          </a>
+        </div>
+      </section>
 
       <CyberAuthOverlay
         isOpen={status === "auth" || status === "quantum"}
@@ -2438,9 +2475,6 @@ export default function App() {
           <HistoricalStatsModal isOpen onClose={() => setActiveModal(null)} />
         )}
 
-        {activeModal === "scoreInquiry" && (
-          <ScoreInquiryModal isOpen onClose={() => setActiveModal(null)} />
-        )}
 
         <InfoModal
           isOpen={activeModal === "savedScoreImport"}
@@ -2967,8 +3001,8 @@ export default function App() {
                           <div className="p-3 flex flex-col gap-2">
                             {[
                               {
-                                type: "modal",
-                                id: "scoreInquiry",
+                                type: "route",
+                                href: "/score-inquiry",
                                 icon: Search,
                                 label: "會考成績查詢",
                                 color: "text-fuchsia-600",
@@ -2999,12 +3033,11 @@ export default function App() {
                                 bg: "bg-emerald-100",
                               },
                             ].map((link) =>
-                              link.type === "link" ? (
                                 <a
                                   key={link.label}
-                                  href={link.href}
-                                  target="_blank"
-                                  rel="noreferrer"
+                                  href={link.type === 'route' ? withBasePath(link.href) : link.href}
+                                  target={link.type === 'link' ? '_blank' : undefined}
+                                  rel={link.type === 'link' ? 'noopener noreferrer' : undefined}
                                   className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl border-2 border-transparent hover:border-slate-900 hover:bg-slate-50 group active:scale-95 transition-all"
                                 >
                                   <div className="flex items-center gap-3">
@@ -3020,31 +3053,7 @@ export default function App() {
                                     </span>
                                   </div>
                                   <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-slate-900 -rotate-45 group-hover:rotate-0 transition-transform" />
-                                </a>
-                              ) : (
-                                <button
-                                  key={link.label}
-                                  onClick={() => {
-                                    setActiveModal(link.id as any);
-                                    setIsNavMenuOpen(false);
-                                  }}
-                                  className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl border-2 border-transparent hover:border-slate-900 hover:bg-slate-50 group active:scale-95 transition-all outline-none"
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <div
-                                      className={`p-1.5 rounded-lg border-2 border-slate-900 ${link.bg}`}
-                                    >
-                                      <link.icon
-                                        className={`w-4 h-4 ${link.color}`}
-                                      />
-                                    </div>
-                                    <span className="font-bold text-slate-900">
-                                      {link.label}
-                                    </span>
-                                  </div>
-                                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-900 group-hover:translate-x-1 transition-all" />
-                                </button>
-                              ),
+                                </a>,
                             )}
                           </div>
                         </motion.div>
@@ -3188,6 +3197,7 @@ export default function App() {
 
       <Footer />
     </div>
+    </MotionConfig>
   );
 }
 

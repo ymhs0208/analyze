@@ -1,13 +1,15 @@
+import PageBreadcrumb from './PageBreadcrumb';
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, BarChart3, BookOpen, Building2, Calculator, CalendarDays, CheckCircle2, Compass, Crown, ExternalLink, FileText, GraduationCap, HeartHandshake, HelpCircle, History, LineChart, Map, MapPin, Megaphone, Search, Shield, Sparkles, Target, UserRound } from 'lucide-react';
+import { ArrowRight, BarChart3, BookOpen, Building2, Calculator, CalendarDays, CheckCircle2, Compass, Crown, ExternalLink, FileText, GraduationCap, HeartHandshake, HelpCircle, History, LineChart, Map, MapPin, Megaphone, Search, Shield, Sparkles, Target, UserRound } from 'lucide-react';
 import { withBasePath } from '../lib/routes';
-import MissingFeatureCard from './MissingFeatureCard';
+import './site-map-page.css';
 
 type Item = { title: string; desc: string; href: string; icon: React.ElementType; tone: string; external?: boolean; keywords: string };
 type Category = { title: string; desc: string; items: Item[] };
 
 const categories: Category[] = [
-  { title: '先完成落點分析', desc: '第一次使用時，從這三個入口開始最快。', items: [
+  { title: '先完成落點分析', desc: '從官方成績查詢到落點分析，依序找到需要的入口。', items: [
+    { title: '會考成績查詢', desc: '前往官方網站查成績，並了解查詢後如何使用本站。', href: '/score-inquiry', icon: Search, tone: 'bg-violet-100 text-violet-700', keywords: '會考 成績 查詢 官方 入口' },
     { title: '開始落點分析', desc: '輸入邀請碼、就學區、偏好與會考成績，取得推薦校科。', href: '/', icon: Compass, tone: 'bg-indigo-100 text-indigo-700', keywords: '首頁 分析 成績 邀請碼 結果' },
     { title: '使用說明', desc: '用六個步驟完成資料輸入，並知道結果該怎麼看。', href: '/instructions', icon: HelpCircle, tone: 'bg-blue-100 text-blue-700', keywords: '教學 說明 步驟 怎麼用' },
     { title: '會考成績等級', desc: '確認 A、B、C 與標示、寫作級分的填寫方式。', href: '/grade-level', icon: GraduationCap, tone: 'bg-rose-100 text-rose-700', keywords: 'A++ A+ B++ 等級 標示 寫作' },
@@ -19,9 +21,12 @@ const categories: Category[] = [
     { title: '高二「班群」是什麼？怎麼選？', desc: '認識自然、社會取向、數學 A／B 與 18 學群的規劃方式。', href: '/grade-11-pathways', icon: Compass, tone: 'bg-fuchsia-100 text-fuchsia-700', keywords: '高二 班群 自然組 社會組 數學A 數學B 18學群 分組' },
     { title: '高中職三年後的下一步地圖', desc: '互動查看普高、技高、綜高與五專的升學、就業與轉換路徑。', href: '/future-pathways', icon: Map, tone: 'bg-orange-100 text-orange-700', keywords: '普高 技高 綜高 五專 升學 技優 特殊選才 就業 二技 插班' },
     { title: '技職群科百科', desc: '認識技職群別、常見科別、學習特質與未來進路。', href: '/vocational-encyclopedia', icon: BookOpen, tone: 'bg-emerald-100 text-emerald-700', keywords: '技職 群科 科別 專業 高職' },
+    { title: '科別探索圖鑑', desc: '依類別與群別查找 87 個科別，閱讀各科獨立介紹。', href: '/departments', icon: BookOpen, tone: 'bg-violet-100 text-violet-700', keywords: '科別 圖鑑 技高 高職 職群 介紹' },
+    { title: '職群比較', desc: '把感興趣的技職群別放在一起比較。', href: '/vocational-compare', icon: Target, tone: 'bg-sky-100 text-sky-700', keywords: '職群 比較 技職 選擇' },
     { title: 'Holland 興趣測驗', desc: '完成簡易興趣測驗，取得 RIASEC 類型與群科探索方向。', href: '/holland', icon: Sparkles, tone: 'bg-purple-100 text-purple-700', keywords: '興趣 測驗 holland RIASEC 性向' },
   ] },
   { title: '規劃與選填志願', desc: '有了方向後，用資料與工具把選項排成可執行的志願清單。', items: [
+    { title: '生活條件比較單', desc: '整理通勤、費用與生活需求，協助比較選校條件。', href: '/life-feasibility', icon: Map, tone: 'bg-indigo-100 text-indigo-700', keywords: '生活 條件 比較 通勤 費用 選校' },
     { title: '模擬志願序', desc: '搜尋校科加入清單，自行調整順序並列印草稿。', href: '/mock-volunteer', icon: Target, tone: 'bg-amber-100 text-amber-700', keywords: '模擬 志願序 排序 選填' },
     { title: '填志願策略', desc: '了解夢幻、實際、保守志願的安排原則與常見提醒。', href: '/strategy', icon: CheckCircle2, tone: 'bg-orange-100 text-orange-700', keywords: '策略 夢幻 實際 保守 志願' },
     { title: '歷年會考統計', desc: '查看歷年等級組合與分布，理解成績的整體趨勢。', href: '/historical-stats', icon: LineChart, tone: 'bg-indigo-100 text-indigo-700', keywords: '歷年 統計 分布 成績 趨勢' },
@@ -76,6 +81,17 @@ const categories: Category[] = [
   ] },
 ];
 
+const categoryNavigation = [
+  { icon: Compass, hint: '查成績、看等級、開始分析' },
+  { icon: GraduationCap, hint: '找學校、認識科別與興趣方向' },
+  { icon: Target, hint: '比較條件、排志願、掌握日期' },
+  { icon: Crown, hint: '會員資格、資料管理與公告' },
+  { icon: MapPin, hint: '前往各就學區的分析專頁' },
+  { icon: Calculator, hint: '了解積分換算與超額比序' },
+  { icon: BookOpen, hint: '操作說明、名詞與網站政策' },
+  { icon: ExternalLink, hint: '序位查詢與錄取分享平台' },
+];
+
 const quickLinks = categories.slice(0, 3).flatMap((category) => category.items).filter((item) => ['開始落點分析', '搜尋學校與科別', '模擬志願序'].includes(item.title));
 
 const searchAliases: Record<string, string> = {
@@ -84,6 +100,7 @@ const searchAliases: Record<string, string> = {
   '/mock-volunteer': '志願 志願序 模擬 選填',
   '/strategy': '策略 填志願 選填 志願序',
   '/grade-level': '會考 成績 等級 A++ A+ B++ 寫作',
+  '/score-inquiry': '會考 成績 查詢 官方 網站 落點',
   '/important-dates': '日期 時程 報名 放榜 會考',
   '/news': '最新 消息 公告 資料 更新',
   '/membership': '會員 免廣告 LINE 付款 月費 年費',
@@ -135,12 +152,34 @@ export default function SiteMapPage() {
     })).filter((category) => category.items.length > 0);
   }, [searchTerm]);
   const count = filtered.reduce((total, category) => total + category.items.length, 0);
+  const totalCount = categories.reduce((total, category) => total + category.items.length, 0);
+  const isSearching = searchTerm.trim().length > 0;
 
-  return <main className="min-h-screen bg-slate-50 text-slate-900">
-    <section className="border-b-4 border-slate-900 bg-amber-50"><div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8"><a href={withBasePath('/')} className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]"><ArrowLeft className="h-4 w-4" />返回首頁</a><div className="py-10"><div className="mb-5 inline-flex items-center gap-3 rounded-2xl border-2 border-slate-900 bg-white px-4 py-3 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)]"><div className="flex h-11 w-11 items-center justify-center rounded-xl border-2 border-slate-900 bg-amber-100"><Map className="h-6 w-6 text-amber-700" /></div><div><p className="text-xs font-black uppercase tracking-widest text-slate-500">Site Map</p><p className="text-sm font-black text-slate-700">從需求找到正確工具</p></div></div><h1 className="text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">網站地圖</h1><p className="mt-5 max-w-4xl text-base font-bold leading-8 text-slate-700 sm:text-lg">不知道下一步該做什麼？先從「開始落點分析」完成基本資料；想探索方向，就看學校類型、群科或興趣測驗；準備選填時，再使用策略與模擬志願序。</p></div></div></section>
-    <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8"><section className="rounded-2xl border-4 border-slate-900 bg-slate-900 p-5 text-white shadow-[5px_5px_0px_0px_rgba(245,158,11,1)] sm:p-6"><p className="text-xs font-black tracking-widest text-amber-200">快速開始</p><h2 className="mt-2 text-2xl font-black">你現在最需要哪一個？</h2><div className="mt-5 grid gap-3 md:grid-cols-3">{quickLinks.map((item) => { const Icon = item.icon; return <a key={item.title} href={withBasePath(item.href)} className="group rounded-xl border-2 border-white bg-white p-4 text-slate-900 transition hover:-translate-y-0.5"><Icon className="h-6 w-6 text-amber-700" /><h3 className="mt-3 text-lg font-black">{item.title}</h3><p className="mt-1 text-sm font-bold leading-6 text-slate-600">{item.desc}</p><span className="mt-3 inline-flex items-center gap-1 text-sm font-black text-amber-700">前往工具 <ArrowRight className="h-4 w-4 group-hover:translate-x-1" /></span></a>; })}</div></section>
-      <div className="mt-7 rounded-2xl border-4 border-slate-900 bg-white p-4 shadow-[5px_5px_0px_0px_rgba(15,23,42,1)]"><div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center"><div className="relative"><Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" /><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="搜尋功能、頁面或關鍵字，例如：五專、序位、匯出…" className="w-full rounded-xl border-2 border-slate-900 bg-slate-50 py-3 pl-12 pr-4 text-base font-bold outline-none focus:bg-white focus:ring-4 focus:ring-amber-300/40" /></div><div className="flex items-center justify-between gap-3 lg:justify-end"><span className="rounded-xl border-2 border-slate-200 bg-slate-50 px-3 py-2 text-sm font-black text-slate-600">找到 {count} 個功能</span>{searchTerm && <button type="button" onClick={() => setSearchTerm('')} className="rounded-xl border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black">清除</button>}</div></div></div>
-      <div className="mt-7 grid gap-6">{filtered.length === 0 ? <div className="rounded-2xl border-4 border-dashed border-slate-300 bg-white p-10 text-center"><Search className="mx-auto h-12 w-12 text-slate-300" /><h2 className="mt-4 text-2xl font-black text-slate-700">找不到相關功能</h2><p className="mt-2 text-sm font-bold text-slate-500">試著改用較短的關鍵字，或清除搜尋後查看完整地圖。</p></div> : filtered.map((category) => <section key={category.title} className="rounded-2xl border-4 border-slate-900 bg-white p-5 shadow-[5px_5px_0px_0px_rgba(15,23,42,1)] sm:p-7"><div className="mb-5"><h2 className="text-2xl font-black sm:text-3xl">{category.title}</h2><p className="mt-2 text-sm font-bold leading-7 text-slate-600">{category.desc}</p></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{category.items.map((item) => { const Icon = item.icon; const href = item.external ? item.href : withBasePath(item.href); return <a key={item.title} href={href} target={item.external ? '_blank' : undefined} rel={item.external ? 'noreferrer' : undefined} className="group rounded-2xl border-2 border-slate-900 bg-slate-50 p-4 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] transition hover:-translate-y-0.5 hover:bg-white active:translate-y-0 active:shadow-none"><div className="flex items-start gap-3"><div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-slate-900 ${item.tone}`}><Icon className="h-5 w-5" /></div><div><div className="flex items-center gap-2"><h3 className="text-lg font-black leading-tight">{item.title}</h3>{item.external && <ExternalLink className="h-4 w-4 text-slate-400" />}</div><p className="mt-2 text-sm font-bold leading-6 text-slate-600">{item.desc}</p></div></div></a>; })}</div></section>)}<MissingFeatureCard /></div>
-    </section>
-  </main>;
+  return <main className="site-map-page"><div className="site-map-shell">
+    <PageBreadcrumb title="網站地圖" />
+    <header className="site-map-hero"><div><span className="site-map-eyebrow"><Map size={17} aria-hidden="true" />全站功能索引</span><h1>網站地圖</h1><p>從想做的事出發，快速找到落點分析、校科探索、志願規劃與各區資訊。</p></div><div className="site-map-hero-stat"><strong>{totalCount}</strong><span>個功能與資訊頁面</span></div></header>
+
+    <section className="site-map-search-panel" aria-label="搜尋網站功能"><label htmlFor="site-map-search">想找什麼功能？</label><div className="site-map-search-row"><Search size={20} aria-hidden="true" /><input id="site-map-search" type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="輸入功能或關鍵字，例如：五專、志願、會員" autoComplete="off" />{isSearching && <button type="button" onClick={() => setSearchTerm('')}>清除</button>}</div><p role="status" aria-live="polite">{isSearching ? `找到 ${count} 個相關頁面` : '也可以從下方分類直接瀏覽全部功能。'}</p></section>
+
+    {!isSearching && <><section className="site-map-quick" aria-labelledby="site-map-quick-heading"><div className="site-map-section-intro"><span>常用入口</span><h2 id="site-map-quick-heading">先從這裡開始</h2></div><div className="site-map-quick-grid">{quickLinks.map((item, index) => { const Icon = item.icon; return <a className="site-map-quick-link" key={item.title} href={withBasePath(item.href)}><span className="site-map-quick-number">0{index + 1}</span><Icon size={23} aria-hidden="true" /><strong>{item.title}</strong><span>{item.desc}</span><ArrowRight className="site-map-quick-arrow" size={18} aria-hidden="true" /></a>; })}</div></section>
+    <nav className="site-map-index" aria-labelledby="site-map-index-title">
+      <div className="site-map-index-heading"><div><h2 id="site-map-index-title">依分類瀏覽</h2><p>選擇你想做的事，直接跳到相關頁面。</p></div><span>{categories.length} 個分類</span></div>
+      <div className="site-map-index-grid">{categories.map((category, index) => {
+        const { icon: Icon, hint } = categoryNavigation[index];
+        return <a key={category.title} href={`#site-map-category-${index}`} className="site-map-index-link">
+          <span className="site-map-index-icon"><Icon size={21} aria-hidden="true" /></span>
+          <span className="site-map-index-copy"><strong>{category.title}</strong><small>{hint}</small></span>
+          <span className="site-map-index-count">{category.items.length}<small>{index === 7 ? '個資源' : '個頁面'}</small></span>
+          <ArrowRight size={17} aria-hidden="true" className="site-map-index-arrow" />
+        </a>;
+      })}</div>
+    </nav></>}
+
+    <div className="site-map-categories">{filtered.length === 0 ? <div className="site-map-empty"><Search size={27} aria-hidden="true" /><h2>找不到相關功能</h2><p>試著用較短的關鍵字，或清除搜尋查看完整網站地圖。</p><button type="button" onClick={() => setSearchTerm('')}>查看全部頁面</button></div> : filtered.map((category) => {
+      const categoryIndex = categories.findIndex((item) => item.title === category.title);
+      const compact = categoryIndex === 4 || categoryIndex === 5;
+      return <section className="site-map-category" id={`site-map-category-${categoryIndex}`} key={category.title} aria-labelledby={`site-map-heading-${categoryIndex}`}><div className="site-map-category-heading"><div><span>{String(categoryIndex + 1).padStart(2, '0')} / {category.items.length} 個頁面</span><h2 id={`site-map-heading-${categoryIndex}`}>{category.title}</h2><p>{category.desc}</p></div></div><div className={compact ? 'site-map-links site-map-links-compact' : 'site-map-links'}>{category.items.map((item) => { const Icon = item.icon; const href = item.external ? item.href : withBasePath(item.href); return <a key={item.title} className="site-map-item" href={href} target={item.external ? '_blank' : undefined} rel={item.external ? 'noopener noreferrer' : undefined}><span className={`site-map-item-icon ${item.tone}`}><Icon size={19} aria-hidden="true" /></span><span className="site-map-item-copy"><strong>{item.title}</strong><small>{item.desc}</small></span>{item.external ? <ExternalLink className="site-map-item-arrow" size={17} aria-hidden="true" /> : <ArrowRight className="site-map-item-arrow" size={17} aria-hidden="true" />}</a>; })}</div></section>;
+    })}</div>
+    <section className="site-map-help"><div><HelpCircle size={26} aria-hidden="true" /><h2>還沒找到需要的資訊？</h2><p>可查看常見問題與名詞說明，或從使用說明了解網站功能。</p></div><a href={withBasePath('/faq-glossary')}>查看常見問答 <ArrowRight size={17} aria-hidden="true" /></a></section>
+  </div></main>;
 }

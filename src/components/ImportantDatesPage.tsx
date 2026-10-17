@@ -1,101 +1,159 @@
-import React, { useState } from 'react';
-import { ArrowLeft, CalendarDays, ChevronDown, ExternalLink, FileText, Info } from 'lucide-react';
+import PageBreadcrumb from './PageBreadcrumb';
+import { useState } from 'react';
+import {
+  ArrowRight,
+  ArrowUpRight,
+  CalendarDays,
+  ChevronDown,
+  ClipboardCheck,
+  FileText,
+  Info,
+  ListFilter,
+} from 'lucide-react';
 import { withBasePath } from '../lib/routes';
-import { admissionPathways, getScheduleForPathway, scheduleNotes, schedulePdf, type AdmissionPathwayId } from '../lib/importantDates';
+import './important-dates-page.css';
+import {
+  admissionPathways,
+  getScheduleForPathway,
+  scheduleNotes,
+  schedulePdf,
+  type AdmissionPathwayId,
+} from '../lib/importantDates';
 
 const highlights = [
-  ['03/04–03/06', '會考報名'],
-  ['05/15–05/16', '國中教育會考'],
-  ['06/04', '會考成績查詢'],
-  ['06/18–06/24', '免試入學序位查詢、志願選填'],
-  ['07/06', '免試入學放榜'],
-  ['07/08', '免試入學報到'],
+  { date: '03/04–03/06', title: '會考報名', month: 3, detail: '確認報名資料與應試資訊' },
+  { date: '05/15–05/16', title: '國中教育會考', month: 5, detail: '依准考證資訊準時應試' },
+  { date: '06/04', title: '會考成績查詢', month: 6, detail: '核對各科等級、標示與寫作級分' },
+  { date: '06/18–06/24', title: '序位查詢、志願選填', month: 6, detail: '留意 6 月 24 日選填截止', featured: true },
+  { date: '07/06', title: '免試入學放榜', month: 7, detail: '確認錄取學校與科別' },
+  { date: '07/08', title: '免試入學報到', month: 7, detail: '依錄取學校通知完成報到' },
 ];
+
+const displayDate = (date: string) => date.replace(/（[一二三四五六日]）/g, '');
 
 export default function ImportantDatesPage() {
   const [selectedPathway, setSelectedPathway] = useState<AdmissionPathwayId>('all');
-  const [pathwaysExpanded, setPathwaysExpanded] = useState(false);
   const visibleMonths = getScheduleForPathway(selectedPathway);
-  const selectedLabel = admissionPathways.find(pathway => pathway.id === selectedPathway)?.label ?? '全部管道';
+  const selectedLabel = admissionPathways.find((pathway) => pathway.id === selectedPathway)?.label ?? '全部管道';
   const eventCount = visibleMonths.reduce((total, group) => total + group.rows.reduce((sum, row) => sum + row.items.length, 0), 0);
+
+  const selectPathway = (value: string) => {
+    if (value === 'all' || admissionPathways.some((pathway) => pathway.id === value)) {
+      setSelectedPathway(value as AdmissionPathwayId);
+    }
+  };
+
+  const openHighlightMonth = (month: number) => {
+    setSelectedPathway('all');
+    window.setTimeout(() => document.getElementById(`month-${month}`)?.scrollIntoView(), 0);
+  };
+
   return (
-    <main className="min-h-screen overflow-x-clip bg-slate-50 text-slate-900">
-      <section className="border-b-4 border-slate-900 bg-purple-50">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <a href={withBasePath('/')} className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black shadow-[3px_3px_0_#0f172a]">
-            <ArrowLeft className="h-4 w-4" />回首頁
-          </a>
-          <div className="py-10">
-            <p className="mb-4 flex items-center gap-2 text-sm font-black text-purple-800"><CalendarDays className="h-5 w-5" />116 學年度 · 民國 116 年（西元 2027 年）</p>
-            <h1 className="text-4xl font-black tracking-tight sm:text-5xl">重要日程</h1>
-            <p className="mt-5 max-w-4xl text-base font-bold leading-8 text-slate-700">國中教育會考及全國高級中等學校與專科學校五年制適性入學，完整整理 2 至 7 月各管道的報名、測驗、選填、放榜、報到與放棄錄取資格日程。</p>
-            <p className="mt-3 text-sm leading-7 text-slate-600">依教育部 115 年 9 月 11 日臺教授國部字第 1155404304 號函附件整理。以下日期皆為民國 116 年；跨月期間列於開始月份。</p>
+    <main className="min-h-screen bg-[#f7f8fc] pb-16 text-slate-900">
+      <div className="mx-auto max-w-6xl px-4 pt-7 sm:px-6 sm:pt-9">
+        <PageBreadcrumb title="重要日程" />
+
+        <header className="relative mt-4 overflow-hidden rounded-[28px] bg-[#283468] px-6 py-9 text-white sm:px-10 sm:py-12">
+          <div className="relative z-10 max-w-3xl">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-extrabold text-indigo-100">
+              <CalendarDays size={15} aria-hidden="true" />116 學年度 · 西元 2027 年
+            </span>
+            <h1 className="mt-5 text-4xl font-black tracking-tight sm:text-5xl">重要日程</h1>
+            <p className="mt-4 max-w-2xl text-base leading-8 text-indigo-50 sm:text-lg">會考、入學報名、志願選填與報到，依月份整理成一份清楚的升學時間表。</p>
+            <p className="mt-5 max-w-2xl text-sm leading-6 text-indigo-200">以下日期皆為民國 116 年；跨月期間列於開始月份。實際時程仍以各管道簡章及最新公告為準。</p>
+            <a href={withBasePath(schedulePdf)} target="_blank" rel="noopener noreferrer" className="mt-7 inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-extrabold text-[#283468] transition hover:bg-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+              <FileText size={18} aria-hidden="true" />完整日程表 PDF<ArrowUpRight size={16} aria-hidden="true" /><span className="sr-only">（另開新分頁）</span>
+            </a>
           </div>
-          <section aria-labelledby="key-dates" className="pb-8">
-            <h2 id="key-dates" className="mb-4 text-xl font-black">會考與免試入學關鍵節點</h2>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {highlights.map(([date, title]) => <div key={title} className="rounded-xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a]"><p className="text-xl font-black text-purple-800">{date}</p><p className="mt-2 text-sm font-bold">{title}</p></div>)}
+          <CalendarDays size={260} strokeWidth={.7} aria-hidden="true" className="pointer-events-none absolute -bottom-20 -right-12 hidden rotate-[-12deg] text-white/10 md:block" />
+        </header>
+
+        <section aria-labelledby="highlight-heading" className="important-highlights">
+          <div className="important-highlights-heading">
+            <div>
+              <p>先記住這些日期</p>
+              <h2 id="highlight-heading">六個關鍵節點</h2>
+              <span>從報名到報到，先掌握最需要留意的時間。</span>
             </div>
-          </section>
-        </div>
-      </section>
-      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:px-8">
-        <div className="min-w-0 space-y-6">
-          <section aria-labelledby="pathway-heading" className="rounded-2xl border-4 border-slate-900 bg-white p-4 shadow-[5px_5px_0_#0f172a] sm:p-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <h2 id="pathway-heading" className="min-w-0 text-2xl font-black">
-                <button type="button" aria-expanded={pathwaysExpanded} aria-controls="pathway-options" onClick={() => setPathwaysExpanded(expanded => !expanded)} className="flex min-h-11 items-center gap-3 rounded-lg text-left hover:text-purple-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-purple-700">
-                  <span>依入學管道查看<span className="mt-1 block text-xs font-bold text-slate-500">{pathwaysExpanded ? '收合管道選項' : '點擊展開完整管道'}</span></span>
-                  <ChevronDown aria-hidden="true" className={`h-5 w-5 shrink-0 transition-transform ${pathwaysExpanded ? 'rotate-180' : ''}`} />
-                </button>
-              </h2>
-              <a href={withBasePath(schedulePdf)} target="_blank" rel="noreferrer" className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl border-2 border-purple-800 bg-purple-50 px-4 py-3 text-sm font-black text-purple-900 shadow-[3px_3px_0_#6b21a8] transition-colors hover:bg-purple-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-purple-700 sm:w-auto">
-                <FileText aria-hidden="true" className="h-5 w-5 shrink-0" />
-                查看完整日程表 PDF
-                <ExternalLink aria-hidden="true" className="h-4 w-4 shrink-0" />
-                <span className="sr-only">（另開新分頁）</span>
-              </a>
+            <span className="important-highlights-instruction"><CalendarDays size={16} aria-hidden="true" />點選節點查看該月完整日程</span>
+          </div>
+          <ol className="important-highlights-grid">
+            {highlights.map(({ date, title, month, detail, featured }, index) => (
+              <li key={title}>
+                <a href={`#month-${month}`} onClick={() => openHighlightMonth(month)} className={`important-highlight-card${featured ? ' important-highlight-card--featured' : ''}`} aria-label={`第 ${index + 1} 個節點，${date} ${title}，查看 ${month} 月完整日程`}>
+                  <span className="important-highlight-top"><span className="important-highlight-number">{String(index + 1).padStart(2, '0')}</span></span>
+                  <strong className="important-highlight-date">{date}</strong>
+                  <span className="important-highlight-title">{title}</span>
+                  <span className="important-highlight-detail">{detail}</span>
+                  <span className="important-highlight-link">查看 {month} 月日程 <ArrowRight size={16} aria-hidden="true" /></span>
+                </a>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section aria-labelledby="pathway-heading" className="mt-9 rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_10px_32px_rgba(31,42,85,0.05)] sm:p-6">
+          <h2 id="pathway-heading" className="flex items-center gap-2 text-lg font-black"><ListFilter size={20} aria-hidden="true" className="text-indigo-600" />選擇入學管道</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-500">切換後只顯示該管道相關的日程。</p>
+          <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="relative w-full max-w-lg">
+              <label htmlFor="schedule-pathway" className="sr-only">入學管道</label>
+              <select id="schedule-pathway" value={selectedPathway} onChange={(event) => selectPathway(event.target.value)} aria-controls="pathway-schedule" className="min-h-12 w-full appearance-none rounded-xl border border-slate-300 bg-white px-4 py-3 pr-11 text-sm font-bold text-slate-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100">
+                <option value="all">全部管道</option>
+                {admissionPathways.map((pathway) => <option key={pathway.id} value={pathway.id}>{pathway.label}</option>)}
+              </select>
+              <ChevronDown size={18} aria-hidden="true" className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-500" />
             </div>
-            <div id="pathway-options" hidden={!pathwaysExpanded}>
-            <p className="mt-3 text-sm font-bold leading-7 text-slate-600">選擇管道，依日期查看報名、測驗、放榜、報到與放棄錄取資格等事項。共同辦理的事項會保留在各相關管道中。</p>
-            <div role="group" aria-label="選擇入學管道" className="mt-5 flex flex-wrap gap-2">
-              {[{ id: 'all' as const, label: '全部管道' }, ...admissionPathways].map(pathway => (
-                <button key={pathway.id} type="button" aria-pressed={selectedPathway === pathway.id} aria-controls="pathway-schedule" onClick={() => setSelectedPathway(pathway.id)} className={`rounded-xl border-2 border-slate-900 px-3 py-2 text-sm font-black focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-purple-700 ${selectedPathway === pathway.id ? 'bg-purple-700 text-white shadow-[2px_2px_0_#0f172a]' : 'bg-white text-slate-700 hover:bg-purple-50'}`}>{pathway.label}</button>
-              ))}
-            </div>
-            </div>
-            <p role="status" className="mt-5 text-sm font-black text-purple-800">{selectedLabel} · 共 {eventCount} 項日程</p>
-            {selectedPathway !== 'all' && selectedPathway !== 'exam' && <p className="mt-2 text-sm leading-7 text-slate-600">以下列出此管道在原表中的事項；如需參加會考，可切換「國中教育會考」查看考試時程。各管道資格及原表未列出的程序，請依招生簡章確認。</p>}
-          </section>
-          <div id="pathway-schedule" className="space-y-6">
-          {visibleMonths.map(({ month, rows }) => (
-            <section key={month} id={`month-${month}`} aria-labelledby={`month-title-${month}`} className="scroll-mt-24 rounded-2xl border-4 border-slate-900 bg-white p-4 shadow-[5px_5px_0_#0f172a] sm:p-6">
-              <h2 id={`month-title-${month}`} className="mb-5 text-2xl font-black">116 年 {month} 月</h2>
-              <div className="divide-y-2 divide-slate-200">
-                {rows.map(({ date, items }) => (
-                  <article key={date} className="py-5 first:pt-0 last:pb-0">
-                    <h3 className="mb-3 text-base font-black text-purple-800">{date}</h3>
-                    <ul className="list-disc space-y-2 pl-5 text-sm font-bold leading-7 text-slate-700 sm:text-base">
-                      {items.map(item => <li key={item}>{item}</li>)}
-                    </ul>
-                  </article>
-                ))}
-              </div>
-            </section>
+            <p role="status" className="shrink-0 text-sm font-extrabold text-indigo-700">{selectedLabel} · {eventCount} 項日程</p>
+          </div>
+          {selectedPathway !== 'all' && selectedPathway !== 'exam' && <p className="mt-4 rounded-xl bg-indigo-50 px-4 py-3 text-sm leading-6 text-indigo-900">此處列出原表中與該管道相關的事項；如需參加會考，也請查看「國中教育會考」的考試時程。</p>}
+        </section>
+
+        <nav aria-label="跳至月份" className="mt-7 flex gap-2 overflow-x-auto pb-2">
+          {visibleMonths.map(({ month }) => (
+            <a key={month} href={`#month-${month}`} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700">
+              {month} 月
+            </a>
           ))}
-          </div>
+        </nav>
+
+        <div id="pathway-schedule" className="mt-3 space-y-6">
+          {visibleMonths.length === 0 && <p className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-600">目前沒有符合此管道的日程。</p>}
+          {visibleMonths.map(({ month, rows }) => {
+            const monthCount = rows.reduce((total, row) => total + row.items.length, 0);
+            return (
+              <section key={month} id={`month-${month}`} aria-labelledby={`month-title-${month}`} className="scroll-mt-6 overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_10px_32px_rgba(31,42,85,0.05)]">
+                <div className="flex items-center justify-between gap-4 px-5 py-5 sm:px-7">
+                  <h2 id={`month-title-${month}`} className="text-xl font-black">116 年 {month} 月</h2>
+                  <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{monthCount} 項</span>
+                </div>
+                <div>
+                  {rows.map(({ date, items }) => (
+                    <article key={date} className="grid border-t-2 border-slate-200 sm:grid-cols-[180px_minmax(0,1fr)]">
+                      <h3 className="flex items-center bg-indigo-50 px-5 py-3 text-sm font-black leading-6 text-indigo-800 sm:px-7 sm:py-5">{displayDate(date)}</h3>
+                      <ul className="min-w-0 space-y-2.5 px-5 py-4 sm:px-7 sm:py-5">
+                        {items.map((item) => <li key={item} className="flex gap-3 text-sm leading-7 text-slate-700 sm:text-[15px]"><span aria-hidden="true" className="mt-[11px] h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400" /><span className="min-w-0">{item}</span></li>)}
+                      </ul>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </div>
-        <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
-          <section className="rounded-2xl border-4 border-slate-900 bg-amber-200 p-5 shadow-[5px_5px_0_#0f172a]">
-            <h2 className="flex items-center gap-2 text-xl font-black"><Info className="h-6 w-6 shrink-0" />原表備註</h2>
-            <ol className="mt-4 list-decimal space-y-4 pl-5 text-sm font-bold leading-7">{scheduleNotes.map(note => <li key={note}>{note}</li>)}</ol>
-          </section>
-          <section className="rounded-2xl border-4 border-slate-900 bg-white p-5 shadow-[5px_5px_0_#0f172a]">
-            <h2 className="text-xl font-black">選填與報到提醒</h2>
-            <p className="mt-3 text-sm font-bold leading-7 text-slate-700">志願選填截止日為 6 月 24 日，免試入學及特色招生考試分發入學報名截止日為 6 月 29 日，兩者為不同程序。請依所屬就學區簡章及學校通知完成。</p>
-            <p className="mt-3 text-sm font-bold leading-7 text-slate-700">原表未列每日受理或截止時刻。報名、報到及放棄錄取資格的辦理方式與確切時間，請查閱各管道簡章與最新公告。</p>
-          </section>
-        </aside>
+
+        <section aria-label="日程使用提醒" className="mt-9 grid gap-4 md:grid-cols-2">
+          <div className="rounded-[22px] border border-amber-200 bg-[#fffaf0] p-6">
+            <h2 className="flex items-center gap-2 text-lg font-black"><ClipboardCheck size={20} aria-hidden="true" className="text-amber-700" />選填與報名別混淆</h2>
+            <p className="mt-3 text-sm leading-7 text-slate-700">6 月 24 日是志願選填截止日；6 月 29 日是免試入學與特色招生考試分發入學報名截止日，兩者是不同程序。</p>
+            <p className="mt-2 text-sm leading-7 text-slate-700">原表未列每日受理或截止時刻，請依所屬就學區簡章及學校通知辦理。</p>
+          </div>
+          <div className="rounded-[22px] border border-slate-200 bg-white p-6">
+            <h2 className="flex items-center gap-2 text-lg font-black"><Info size={20} aria-hidden="true" className="text-indigo-600" />資料來源與備註</h2>
+            <p className="mt-3 text-sm leading-7 text-slate-600">依教育部 115 年 9 月 11 日臺教授國部字第 1155404304 號函附件整理。</p>
+            <ol className="mt-3 list-decimal space-y-2 pl-5 text-xs leading-6 text-slate-600">{scheduleNotes.map((note) => <li key={note}>{note}</li>)}</ol>
+          </div>
+        </section>
       </div>
     </main>
   );

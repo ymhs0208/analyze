@@ -1,25 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  ArrowRight,
-  CalendarDays,
-  Check,
-  CreditCard,
-  Crown,
-  EyeOff,
-  HeartHandshake,
-  HelpCircle,
-  KeyRound,
-  LockKeyhole,
-  LogIn,
-  Mail,
-  MessageCircle,
-  ReceiptText,
-  Sparkles,
-  X,
-  BadgeCheck,
-  Shield,
-  LogOut,
-} from "lucide-react";
+import { ArrowRight, BadgeCheck, CalendarDays, ChevronDown, CreditCard, Crown, EyeOff, HeartHandshake, HelpCircle, KeyRound, LockKeyhole, LogOut, Mail, MessageCircle, ReceiptText, Sparkles, UserRound } from "lucide-react";
 import { callBackend } from "../lib/api";
 import { startLineLogin } from "../lib/lineLogin";
 import {
@@ -29,28 +9,27 @@ import {
   type MembershipStatus,
 } from "../lib/membership";
 import { withBasePath } from "../lib/routes";
-import './membership.css';
+import PageBreadcrumb from "./PageBreadcrumb";
+import './membership-plans-page.css';
 
 const plans = [
   {
     id: "monthly",
-    name: "月費體驗方案",
+    name: "30 天方案",
     price: 49,
     duration: "30 天",
-    note: "不到一杯飲料的價格，立即享有 30 天純淨無廣告",
-    comparison: "短期準備，輕鬆開始",
+    comparison: "完整權益，先用 30 天體驗",
     accent: "sky",
-    featured: true,
+    featured: false,
   },
   {
     id: "yearly",
-    name: "年費超值方案",
+    name: "365 天方案",
     price: 399,
     duration: "365 天",
-    note: "平均每天只要 1.1 元，全年專注規劃，免去一切打擾",
-    comparison: "比連續購買 12 個月月費省 NT$189",
+    comparison: "比購買 12 次 30 天方案省 NT$189",
     accent: "emerald",
-    featured: false,
+    featured: true,
   },
 ] as const;
 type PlanId = (typeof plans)[number]["id"];
@@ -58,8 +37,8 @@ type PlanId = (typeof plans)[number]["id"];
 
 const membershipFaqs = [
   {
-    q: '月費與年費有什麼差別？',
-    a: '月費方案 NT$49，有效期 30 天；年費方案 NT$399，有效期 365 天。年費等同每天約 NT$1.1，比連續購買 12 個月月費省下 NT$189。兩種方案均為一次付款，到期不自動續扣。',
+    q: '30 天與 365 天方案有什麼差別？',
+    a: '30 天方案 NT$49；365 天方案 NT$399。權益相同，差別是使用期間。購買 365 天方案比購買 12 次 30 天方案省 NT$189。兩種方案均為一次付款，到期不自動續扣。',
   },
   {
     q: '付款後何時生效？',
@@ -67,7 +46,7 @@ const membershipFaqs = [
   },
   {
     q: '到期後會自動扣款嗎？',
-    a: '不會。月費與年費均為一次性付款，期間結束後不會自動續費或扣款，無需手動取消。若要繼續使用，到期後再重新購買即可。',
+    a: '不會。兩種方案均為一次性付款，期間結束後不會自動續費或扣款，無需手動取消。若要繼續使用，可再選擇方案購買。',
   },
   {
     q: '可以在多台裝置使用嗎？',
@@ -99,76 +78,10 @@ const paymentMethods = {
 
 
 function MembershipSupportLinks() {
-  return (
-    <section
-      aria-labelledby="membership-support-title"
-      className="mt-8 overflow-hidden rounded-[1.75rem] border-2 border-slate-900 bg-white shadow-[3px_3px_0_#161b35]"
-    >
-      <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(16rem,.7fr)]">
-        <div className="p-5 sm:p-8">
-          <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
-              <Mail className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-[10px] sm:text-xs font-bold tracking-[0.14em] text-emerald-600">
-                MEMBERSHIP SUPPORT
-              </p>
-              <h2
-                id="membership-support-title"
-                className="mt-1 text-xl sm:text-2xl font-bold"
-              >
-                會員協助與交易保障
-              </h2>
-              <p className="mt-2 max-w-xl text-sm font-normal leading-6 text-slate-600">
-                需要協助時，我們在這裡。付款、資格確認或使用上的問題，都可以直接來信聯絡。
-              </p>
-            </div>
-          </div>
-          <a
-            href="mailto:tyctw.analyze@gmail.com?subject=%E6%9C%83%E5%93%A1%E5%85%8D%E5%BB%A3%E5%91%8A%E5%8D%94%E5%8A%A9"
-            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-emerald-50 px-4 py-3.5 text-sm font-bold text-emerald-700 transition hover:border-stone-200 hover:bg-emerald-100 sm:w-auto"
-          >
-            <Mail className="h-4 w-4" />
-            tyctw.analyze@gmail.com
-          </a>
-        </div>
-        <div className="border-t-2 border-slate-900 bg-[#f7f9ff] p-5 sm:p-8 md:border-l md:border-t-0">
-          <p className="text-[10px] sm:text-xs font-bold tracking-[0.14em] text-slate-500">
-            MEMBERSHIP INFORMATION
-          </p>
-          <h3 className="mt-1 text-lg sm:text-xl font-bold text-slate-800">
-            售後與退款說明
-          </h3>
-          <p className="mt-2 text-sm font-normal leading-6 text-slate-600">
-            查看付款異常、取消申請、退款方式與交易爭議的處理原則。
-          </p>
-          <div className="mt-5 grid gap-2 sm:gap-3 grid-cols-2">
-            <a
-              href={withBasePath("/after-sales-service")}
-              className="group flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-1.5 sm:gap-3 rounded-xl border border-slate-200 bg-white p-2.5 sm:px-4 sm:py-3.5 text-center transition hover:border-stone-200 hover:shadow-[5px_5px_0_#161b35]"
-            >
-              <span className="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-2">
-                <HeartHandshake className="h-5 w-5 sm:h-4 sm:w-4 shrink-0 text-emerald-600" />
-                <span className="text-xs sm:text-sm font-bold text-slate-800">售後服務</span>
-              </span>
-              <ArrowRight className="hidden sm:block h-4 w-4 shrink-0 text-slate-400 transition group-hover:translate-x-1 group-hover:text-slate-900" />
-            </a>
-            <a
-              href={withBasePath("/refund-cancellation-policy")}
-              className="group flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-1.5 sm:gap-3 rounded-xl border border-slate-200 bg-white p-2.5 sm:px-4 sm:py-3.5 text-center transition hover:border-stone-200 hover:shadow-[5px_5px_0_#161b35]"
-            >
-              <span className="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-2">
-                <ReceiptText className="h-5 w-5 sm:h-4 sm:w-4 shrink-0 text-emerald-600" />
-                <span className="text-xs sm:text-sm font-bold text-slate-800 leading-tight">退款與取消</span>
-              </span>
-              <ArrowRight className="hidden sm:block h-4 w-4 shrink-0 text-slate-400 transition group-hover:translate-x-1 group-hover:text-slate-900" />
-            </a>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
+  return <section className="plans-support" aria-labelledby="membership-support-title">
+    <div><Mail size={24} aria-hidden="true" /><h2 id="membership-support-title">會員或付款需要協助？</h2><p>請提供訂單編號與問題描述，方便我們確認。</p><a href="mailto:tyctw.analyze@gmail.com">tyctw.analyze@gmail.com<ArrowRight size={16} aria-hidden="true" /></a></div>
+    <nav aria-label="會員服務說明"><a href={withBasePath('/after-sales-service')}><HeartHandshake size={19} aria-hidden="true" />售後服務<ArrowRight size={16} aria-hidden="true" /></a><a href={withBasePath('/refund-cancellation-policy')}><ReceiptText size={19} aria-hidden="true" />退款與取消說明<ArrowRight size={16} aria-hidden="true" /></a></nav>
+  </section>;
 }
 
 export default function MembershipPage() {
@@ -181,17 +94,20 @@ export default function MembershipPage() {
   const [payerNameError, setPayerNameError] = useState("");
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
-  const [showPlanComparison, setShowPlanComparison] = useState(false);
+  const [paymentWaitingExpired, setPaymentWaitingExpired] = useState(false);
   const selectedPlan = useMemo(
     () => plans.find((plan) => plan.id === selected)!,
     [selected],
   );
+  const activeDaysLeft = membership?.expiresAt
+    ? Math.max(0, Math.ceil((new Date(membership.expiresAt).getTime() - Date.now()) / 86_400_000))
+    : null;
 
   const refresh = async () => {
     const line = await callBackend<{ loggedIn: boolean; name?: string }>({
       action: "getLineLoginSession",
     });
-    if (line.loggedIn) setLineName(line.name || "LINE 會員");
+    setLineName(line.loggedIn ? line.name || "LINE 會員" : "");
     setMembership(await getMembershipStatus());
   };
 
@@ -211,7 +127,7 @@ export default function MembershipPage() {
       } catch (error) {
         if (!cancelled) {
           setMembership({ active: false });
-          setNotice(error instanceof Error ? error.message : "LINE 登入已逾時，請再試一次。");
+          setNotice("目前無法確認會員資格。你仍可查看方案；若已購買，請稍後重新登入或聯絡我們。");
         }
       }
     })();
@@ -245,7 +161,7 @@ export default function MembershipPage() {
       } catch {
         // network hiccup — keep polling until exhausted
       }
-      if (attempts >= MAX_ATTEMPTS) clearInterval(id);
+      if (attempts >= MAX_ATTEMPTS) { clearInterval(id); setPaymentWaitingExpired(true); }
     }, INTERVAL_MS);
 
     return () => clearInterval(id);
@@ -265,7 +181,7 @@ export default function MembershipPage() {
 
   const loginWithLine = () => {
     if (!import.meta.env.VITE_SUPABASE_URL) {
-      setNotice("尚未設定 LINE Login 服務。");
+      setNotice("目前登入服務暫時無法使用，請稍後再試或聯絡 tyctw.analyze@gmail.com。");
       return;
     }
     startLineLogin('/membership');
@@ -335,367 +251,53 @@ export default function MembershipPage() {
     }
   };
 
-  if (membership === null)
-    return (
-      <main id="main-content" aria-busy="true" aria-labelledby="membership-check-title" className="membership-page min-h-screen overflow-hidden bg-[#f7f8f5] px-4 py-7 text-slate-900 sm:px-6 sm:py-12">
-        <div aria-hidden="true" className="fixed -left-24 top-20 h-64 w-64 rounded-full bg-emerald-200/60 blur-3xl" />
-        <div aria-hidden="true" className="fixed -right-20 bottom-0 h-72 w-72 rounded-full bg-sky-200/60 blur-3xl" />
-        <section className="relative mx-auto max-w-lg">
-          <a href={withBasePath("/")} className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-4 py-2 text-sm font-bold shadow-[3px_3px_0_#161b35] transition-all hover:-translate-y-0.5 active:translate-y-0 active:shadow-none"><ArrowRight className="h-4 w-4 rotate-180" />回到落點分析</a>
-          <article className="relative mt-6 overflow-hidden rounded-[2rem] border-2 border-slate-900 bg-white shadow-[3px_3px_0_#161b35]">
-            <div aria-hidden="true" className="absolute -right-10 -top-12 h-36 w-36 rounded-full border-[15px] border-emerald-100" />
-            <div className="relative border-b-2 border-slate-900 bg-emerald-100 px-6 py-5 sm:px-8">
-              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-[11px] font-bold tracking-[.14em] text-emerald-700"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />SECURE MEMBER CHECK</span>
-              <div className="mt-4 flex items-center gap-4"><div aria-hidden="true" className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border-2 border-slate-900 bg-white text-emerald-700 shadow-[3px_3px_0_#161b35]"><Crown className="h-6 w-6 fill-amber-300" /></div><div><h1 id="membership-check-title" className="text-2xl font-bold tracking-tight sm:text-3xl">正在確認會員資格</h1><p className="mt-1 text-sm font-bold text-slate-600">請稍候，我們正在安全確認你的 LINE 身分。</p></div></div>
-            </div>
-            <div className="relative space-y-3 p-5 sm:p-6">
-              <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-emerald-500 text-xs font-bold text-white">1</span><div className="min-w-0 flex-1"><p className="text-sm font-bold">確認 LINE 安全工作階段</p><p className="text-xs font-bold text-emerald-700">已啟動安全驗證</p></div><Check className="h-5 w-5 text-emerald-600" /></div>
-              <div role="status" aria-live="polite" className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3"><span aria-hidden="true" className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-emerald-900 text-xs font-bold text-white">2</span><div className="min-w-0 flex-1"><p className="text-sm font-bold">查詢免廣告資格</p><p className="text-xs font-bold text-emerald-700">正在確認方案與有效期限</p></div><span aria-hidden="true" className="h-5 w-5 animate-spin rounded-full border border-emerald-200 border-t-emerald-600" /></div>
-              <p className="px-1 pt-1 text-center text-xs font-medium leading-5 text-slate-500">登入憑證不會儲存在網址或瀏覽器儲存空間。</p>
-            </div>
-          </article>
-        </section>
-      </main>
-    );
+  const formatDate = (date?: string) => date
+    ? new Intl.DateTimeFormat('zh-TW', { dateStyle: 'long', timeZone: 'Asia/Taipei' }).format(new Date(date))
+    : '尚無日期資料';
+  const benefits = [
+    { icon: EyeOff, title: '把注意力留給選擇', text: '會員期間關閉 Google 廣告與 Offerwall，專心閱讀校科資訊。' },
+    { icon: KeyRound, title: '想比較，就開始分析', text: '填好成績即可分析，省下反覆輸入系統授權碼的步驟。' },
+    { icon: Sparkles, title: '多試幾種成績情境', text: '用一分改變分析探索成績變化，讓校科比較更有方向。' },
+    { icon: MessageCircle, title: '讓全家討論更具體', text: '邀請家長共編志願、留言與查看版本，一起整理每次選擇。' },
+  ];
 
-  if (isSuccessPage && membership !== null && !membership.active)
-    return (
-      <main id="main-content" aria-busy="true" aria-labelledby="payment-confirming-title" className="membership-page min-h-screen overflow-hidden bg-[#f7f8f5] px-4 py-7 text-slate-900 sm:px-6 sm:py-12">
-        <div aria-hidden="true" className="fixed -left-24 top-20 h-64 w-64 rounded-full bg-emerald-200/60 blur-3xl" />
-        <div aria-hidden="true" className="fixed -right-20 bottom-0 h-72 w-72 rounded-full bg-sky-200/60 blur-3xl" />
-        <section className="relative mx-auto max-w-lg">
-          <a href={withBasePath("/")} className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-4 py-2 text-sm font-bold shadow-[3px_3px_0_#161b35] transition-all hover:-translate-y-0.5 active:translate-y-0 active:shadow-none"><ArrowRight className="h-4 w-4 rotate-180" />回到落點分析</a>
-          <article className="relative mt-6 overflow-hidden rounded-[2rem] border-2 border-slate-900 bg-white shadow-[3px_3px_0_#161b35]">
-            <div aria-hidden="true" className="absolute -right-10 -top-12 h-36 w-36 rounded-full border-[15px] border-emerald-100" />
-            <div className="relative border-b-2 border-slate-900 bg-emerald-100 px-6 py-5 sm:px-8">
-              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-[11px] font-bold tracking-[.14em] text-emerald-700"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />PAYMENT CONFIRMING</span>
-              <div className="mt-4 flex items-center gap-4">
-                <div aria-hidden="true" className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border-2 border-slate-900 bg-white text-emerald-700 shadow-[3px_3px_0_#161b35]"><Crown className="h-6 w-6 fill-amber-300" /></div>
-                <div><h1 id="payment-confirming-title" className="text-2xl font-bold tracking-tight sm:text-3xl">付款確認中</h1><p className="mt-1 text-sm font-bold text-slate-600">正在等待付款系統回傳結果，請稍候⋯</p></div>
-              </div>
-            </div>
-            <div role="status" aria-live="polite" className="relative space-y-3 p-5 sm:p-6">
-              <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-emerald-500 text-xs font-bold text-white">1</span><div className="min-w-0 flex-1"><p className="text-sm font-bold">付款已送出</p><p className="text-xs font-bold text-emerald-700">我們已收到付款指示</p></div><Check className="h-5 w-5 text-emerald-600" /></div>
-              <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"><span aria-hidden="true" className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-amber-400 text-xs font-bold text-white">2</span><div className="min-w-0 flex-1"><p className="text-sm font-bold">等待付款機構確認</p><p className="text-xs font-bold text-amber-700">正在與綠界確認交易結果</p></div><span aria-hidden="true" className="h-5 w-5 animate-spin rounded-full border border-amber-200 border-t-amber-500" /></div>
-              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 opacity-50"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-slate-300 text-xs font-bold text-white">3</span><div className="min-w-0 flex-1"><p className="text-sm font-bold">啟用免廣告會員資格</p><p className="text-xs font-bold text-slate-500">確認後立即生效</p></div></div>
-              <p className="px-1 pt-1 text-center text-xs font-medium leading-5 text-slate-500">若付款已完成但此頁超過 30 秒仍未更新，請重新整理或來信客服確認。</p>
-            </div>
-          </article>
+  return <main id="main-content" className="plans-page" aria-labelledby="membership-title"><div className="plans-shell">
+    <PageBreadcrumb title={isSuccessPage ? '付款確認' : '會員方案'} />
+    <header className="plans-hero"><div><p className="plans-eyebrow"><Crown size={18} aria-hidden="true" />升學小助手會員</p><h1 id="membership-title">{isSuccessPage ? '確認你的會員資格' : membership?.active ? '會員方案' : <>會員方案<span>把心力，留給升學選擇。</span></>}</h1><p className="plans-lead">{membership?.active ? '會員資格已啟用，接著分析成績、整理志願，慢慢找到適合的選擇。' : 'NT$49 起，享有免廣告、免輸入分析授權碼與家長志願協作。從比較校科到整理志願，讓每次討論都有進展。'}</p></div><a className="plans-account-link" href={withBasePath('/membership/account')}><UserRound size={18} aria-hidden="true" />我的會員帳號<ArrowRight size={16} aria-hidden="true" /></a></header>
+    {notice && <p className="plans-notice" role="status" aria-live="polite">{notice}</p>}
+    {membership === null ? <section className="plans-feedback" role="status" aria-busy="true"><Crown size={28} aria-hidden="true" /><h2>正在確認會員資格</h2><p>正在讀取目前帳號的使用狀態，請稍候。</p></section>
+    : isSuccessPage && !membership.active ? <section className="plans-feedback" aria-labelledby="payment-confirming-title"><span className="plans-feedback-icon"><CreditCard size={28} aria-hidden="true" /></span><p className="plans-eyebrow">付款狀態</p><h2 id="payment-confirming-title">{paymentWaitingExpired ? '尚未確認會員資格' : '正在確認付款結果'}</h2><p role="status" aria-live="polite">{paymentWaitingExpired ? '目前尚未收到資格啟用結果。如果已完成付款，請重新確認或提供訂單編號聯絡我們。請先確認原訂單狀態，再決定是否重新購買。' : '正在等待付款系統回傳與資格更新，確認後會顯示會員有效期限。'}</p><div className="plans-feedback-actions"><button type="button" className="plans-primary" onClick={() => void refresh().catch(() => setNotice('暫時無法確認資格，請稍後再試。'))}>重新確認資格</button><a className="plans-secondary" href={withBasePath('/membership/account')}>查看帳號與訂單</a></div></section>
+    : membership.active ? <>
+      <section className="plans-active"><div><span className="plans-active-badge"><BadgeCheck size={17} aria-hidden="true" />會員資格有效</span><h2>{lineName || 'LINE 會員'}，歡迎回來。</h2><p>會員使用期間不顯示 Google 廣告與 Offerwall。填妥成績後，即可直接開始分析。</p><div className="plans-active-actions"><a className="plans-primary" href={withBasePath('/')}>開始落點分析<ArrowRight size={17} aria-hidden="true" /></a><a className="plans-secondary" href={withBasePath('/mock-volunteer')}>整理模擬志願序</a></div></div><dl><div><dt>目前方案</dt><dd>{membership.plan === 'yearly' ? '365 天方案' : '30 天方案'}</dd></div><div><dt>會員有效至</dt><dd>{formatDate(membership.expiresAt)}{activeDaysLeft !== null && <small>剩餘 {activeDaysLeft} 天</small>}</dd></div><div><dt>啟用日期</dt><dd>{formatDate(membership.activatedAt)}</dd></div></dl></section>
+      <div className="plans-active-footer"><a href={withBasePath('/membership/account')}>查看帳號與購買紀錄<ArrowRight size={16} aria-hidden="true" /></a><button type="button" onClick={() => void logoutFromLine()}><LogOut size={16} aria-hidden="true" />登出 LINE</button></div>
+    </> : <>
+      <section className="plans-intro-strip" aria-label="購買與使用重點">{[
+        { icon: CreditCard, title: '一次付款', description: '選好方案，支付本次費用。' },
+        { icon: CalendarDays, title: '到期不自動續扣', description: '不需取消訂閱，續用時再購買。' },
+        { icon: UserRound, title: 'LINE 登入找回資格', description: '換裝置也能登入同一帳號使用。' },
+      ].map(({ icon: Icon, title, description }) => <div className="plans-assurance" key={title}><span className="plans-assurance-icon"><Icon size={21} aria-hidden="true" /></span><div><h2>{title}</h2><p>{description}</p></div></div>)}</section>
+      <form className="plans-purchase" onSubmit={(event) => { event.preventDefault(); if (lineName) void checkout(); }}>
+        <section id="membership-plans" className="plans-selection" aria-labelledby="membership-plans-title"><div className="plans-section-heading"><span className="plans-step">01</span><div><h2 id="membership-plans-title">選一段適合你的規劃時間</h2><p>30 天先體驗，365 天持續規劃。兩種方案都享有完整會員權益。</p></div></div>
+          <fieldset className="plans-options"><legend className="sr-only">選擇會員方案</legend>{plans.map(plan => {
+            const isSelected = selected === plan.id;
+            return <label key={plan.id} className="plans-option" data-selected={isSelected} data-featured={plan.featured}>
+              <div className="plans-option-top"><span className="plans-option-tag">{plan.featured ? '長期規劃更划算' : '輕鬆開始'}</span><input type="radio" name="membership-plan" value={plan.id} aria-label={plan.name} checked={isSelected} onChange={() => setSelected(plan.id)} disabled={submitting} /></div>
+              <h3>{plan.name}</h3><p className="plans-price"><span>NT$</span>{plan.price}</p><p className="plans-price-caption">一次付款 · 使用 {plan.duration}</p>
+              <div className="plans-option-value">{plan.featured ? <><strong>平均每天約 NT$1.1</strong><small>NT$399 ÷ 365 天換算；一次付款 NT$399。</small></> : <><strong>30 天享有完整會員權益</strong><small>適合本次選填，或先體驗會員功能。</small></>}</div>
+              <div className="plans-option-bottom"><p>{plan.comparison}</p><span className="plans-option-select">{isSelected ? '已選擇此方案' : `選擇${plan.duration}方案`}<ArrowRight size={16} aria-hidden="true" /></span></div>
+            </label>;
+          })}</fieldset>
+          <section className="plans-benefits" aria-labelledby="membership-benefits-title"><h3 id="membership-benefits-title">加入會員，讓規劃更順手</h3><div>{benefits.map(({icon: Icon,title,text}) => <article key={title}><Icon size={21} aria-hidden="true" /><div><h4>{title}</h4><p>{text}</p></div></article>)}</div></section>
         </section>
-      </main>
-    );
-
-  if (membership.active)
-    return (
-      <main id="main-content" aria-labelledby="member-active-title" className="membership-page min-h-screen bg-[#f7f8f5] px-4 py-6 text-slate-900 sm:px-6 sm:py-12">
-        <section className="mx-auto max-w-6xl">
-          <nav aria-label="會員頁面導覽" className="flex items-center justify-between gap-4">
-            <a href={withBasePath("/")} className="inline-flex items-center gap-2 rounded-lg border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition hover:text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700">
-              <ArrowRight aria-hidden="true" className="h-4 w-4 rotate-180" />回到落點分析
-            </a>
-            <span className="flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-xs font-bold tracking-widest text-emerald-800 shadow-[3px_3px_0_#161b35]"><Crown aria-hidden="true" className="h-4 w-4" />會員中心</span>
-          </nav>
-          <article className="mt-6 overflow-hidden rounded-[2rem] border-2 border-slate-900 bg-white shadow-[3px_3px_0_#161b35] sm:mt-8">
-            <header className="relative isolate overflow-hidden border-b-2 border-slate-900 bg-[#edf5e9] px-6 py-5 text-slate-900 sm:px-10 sm:py-6 lg:px-12">
-              <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 -z-10 w-1/3 bg-gradient-to-l from-emerald-100/70 to-transparent" />
-              <div className="grid items-center gap-6 md:grid-cols-[1fr_140px] lg:grid-cols-[1fr_160px]">
-                <div className="min-w-0">
-                  <span className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-bold text-emerald-900 shadow-[3px_3px_0_#161b35]"><BadgeCheck aria-hidden="true" className="h-4 w-4" />會員資格有效</span>
-                  <h1 id="member-active-title" className="mt-3 flex items-baseline gap-2 whitespace-nowrap text-2xl font-bold leading-tight tracking-tight sm:gap-3 sm:text-4xl lg:text-5xl">
-                    <span className="text-slate-700">現在享有</span>
-                    <span className="relative inline-block text-emerald-900">
-                      <span aria-hidden="true" className="absolute inset-x-0 bottom-1 -z-10 h-3 -rotate-1 rounded-sm bg-[#d5e8a8] sm:h-4" />
-                      純淨閱讀
-                    </span>
-                  </h1>
-                  <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600 sm:text-base">在會員資格有效期間，查校、比對與規劃頁面都不會載入 Google 廣告或 Offerwall。</p>
-                </div>
-                <div aria-hidden="true" className="relative hidden aspect-square items-center justify-center md:flex">
-                  <div className="absolute inset-2 rounded-full border border-emerald-800/20" />
-                  <div className="absolute inset-6 rounded-full border border-dashed border-emerald-800/20" />
-                  <div className="relative flex h-24 w-24 -rotate-6 flex-col items-center justify-center gap-2 rounded-3xl border-2 border-slate-900 bg-[#fffdf5] shadow-[3px_3px_0_#161b35] lg:h-28 lg:w-28">
-                    <Crown className="h-10 w-10 fill-[#e6edb8] text-emerald-900 lg:h-12 lg:w-12" strokeWidth={1.5} />
-                    <div className="h-1.5 w-12 rounded-full bg-emerald-900/15" />
-                    <span className="absolute -bottom-3 -right-3 grid h-8 w-8 place-items-center rounded-full border-2 border-slate-900 bg-emerald-200"><Check className="h-4 w-4 text-emerald-950" strokeWidth={3} /></span>
-                  </div>
-                  <Sparkles className="absolute right-0 top-3 h-7 w-7 text-emerald-800" strokeWidth={1.5} />
-                </div>
-              </div>
-            </header>
-            <div className="p-6 sm:p-10">
-              <section aria-labelledby="member-details-title" className="overflow-hidden rounded-2xl border-2 border-slate-900 bg-white">
-                <div className="flex items-center gap-3 border-b-2 border-slate-900 bg-[#faf9f3] px-5 py-4 sm:px-6">
-                  <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-white"><BadgeCheck className="h-5 w-5 text-emerald-800" /></span>
-                  <h2 id="member-details-title" className="text-base font-bold text-slate-900">你的會員資訊</h2>
-                </div>
-                <dl className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
-                    <div className="min-w-0 rounded-xl border-2 border-slate-900 bg-white p-4">
-                      <dt className="flex items-center gap-2 text-xs font-bold text-slate-500"><MessageCircle aria-hidden="true" className="h-4 w-4 text-emerald-700" />LINE 會員帳號</dt>
-                      <dd className="mt-3 break-words text-2xl font-bold leading-snug tracking-tight text-slate-900">{lineName || '已完成 LINE 驗證'}</dd>
-                    </div>
-                    <div className="min-w-0 rounded-xl border-2 border-slate-900 bg-white p-4">
-                      <dt className="text-xs font-bold text-slate-500">目前方案</dt>
-                      <dd className="mt-3 inline-flex items-center gap-2 text-xl font-bold text-emerald-950"><Crown aria-hidden="true" className="h-5 w-5" />{membership.plan === 'yearly' ? '年費會員' : '月費會員'}</dd>
-                    </div>
-
-                      <div className="min-w-0 rounded-xl border-2 border-slate-900 bg-white p-4">
-                        <dt className="flex items-center gap-2 text-xs font-bold text-emerald-800"><CalendarDays aria-hidden="true" className="h-4 w-4" />會員啟用日期</dt>
-                        <dd className="mt-3 text-xl font-bold leading-snug tracking-tight text-emerald-950">{membership.activatedAt ? new Intl.DateTimeFormat("zh-TW", { dateStyle: "long" }).format(new Date(membership.activatedAt)) : '尚無日期資料'}</dd>
-                      </div>
-                      <div className="min-w-0 rounded-xl border-2 border-slate-900 bg-[#edf5e9] p-4">
-                        <dt className="flex items-center gap-2 text-xs font-bold text-emerald-800"><CalendarDays aria-hidden="true" className="h-4 w-4" />免廣告有效期限</dt>
-                        <dd className="mt-3 break-words text-xl font-bold leading-snug tracking-tight text-emerald-950">{new Intl.DateTimeFormat("zh-TW", { dateStyle: "long" }).format(new Date(membership.expiresAt!))}</dd>
-                      </div>
-                </dl>
-              </section>
-              <div className="mt-7 flex items-start gap-3 rounded-2xl border-2 border-slate-900 bg-slate-50 p-4 sm:mt-8 sm:p-5">
-                <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-white"><KeyRound className="h-4 w-4 text-emerald-800" /></span>
-                <div><h2 className="text-sm font-bold text-slate-800">準備好成績，就可以開始</h2><p className="mt-1 text-sm leading-6 text-slate-500">會員資格有效期間，回到首頁填妥成績後即可直接開始落點分析，無需再輸入系統授權碼。</p></div>
-              </div>
-              <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:mt-8">
-                <a href={withBasePath("/")} className="group inline-flex min-h-14 flex-1 items-center justify-center gap-3 rounded-xl border-2 border-slate-900 bg-[#123e35] px-5 py-4 text-base font-bold text-white shadow-[3px_3px_0_#161b35] transition hover:bg-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700">
-                  <Sparkles aria-hidden="true" className="h-5 w-5 text-[#dcedb0]" />開始使用落點分析<ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform motion-safe:group-hover:translate-x-1" />
-                </a>
-                <a href={withBasePath("/membership/account")} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-slate-900 px-6 py-4 text-sm font-bold text-slate-700 transition hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700"><BadgeCheck aria-hidden="true" className="h-4 w-4" />我的會員帳號</a>
-              </div>
-              <div className="mt-6 flex justify-center border-t border-slate-100 pt-5">
-                <button type="button" onClick={logoutFromLine} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"><LogOut aria-hidden="true" className="h-3.5 w-3.5" />登出 LINE</button>
-              </div>
-            </div>
-          </article>
-          <MembershipSupportLinks />
+        <section className="plans-checkout" aria-labelledby="membership-checkout-title"><div className="plans-section-heading"><span className="plans-step">02</span><div><h2 id="membership-checkout-title">開始你的會員規劃</h2><p>一次付款，到期不自動續扣。</p></div></div>
+          {lineName ? <div className="plans-login-status"><BadgeCheck size={23} aria-hidden="true" /><div><small>已登入 LINE</small><strong>{lineName}</strong></div><button type="button" onClick={() => void logoutFromLine()} disabled={submitting}>登出</button></div> : <div className="plans-login"><p>用 LINE 登入，讓這份會員資格跟著你。換裝置也能找回。</p><button type="button" onClick={loginWithLine}><img src={withBasePath('/brand/line/line-login.png')} width={40} height={40} alt="" aria-hidden="true" />使用 LINE 登入<ArrowRight size={17} aria-hidden="true" /></button></div>}
+          {lineName && <div className="plans-payer"><h3>付款人資料</h3><p>用於訂單核對、付款確認與會員服務聯繫。</p><label htmlFor="membership-payer-name">付款人姓名</label><input id="membership-payer-name" type="text" autoComplete="name" maxLength={80} required value={payerName} onChange={event => {setPayerName(event.target.value);setPayerNameError('');}} placeholder="請輸入真實姓名" disabled={submitting} aria-invalid={Boolean(payerNameError)} aria-describedby={payerNameError ? 'membership-name-error' : undefined} />{payerNameError && <p className="plans-field-error" id="membership-name-error" role="alert">{payerNameError}</p>}<label htmlFor="membership-email">付款人電子信箱</label><input id="membership-email" type="email" inputMode="email" autoComplete="email" required value={email} onChange={event => {setEmail(event.target.value);setEmailError('');}} placeholder="your@email.com" disabled={submitting} aria-invalid={Boolean(emailError)} aria-describedby={emailError ? 'membership-email-error' : undefined} />{emailError && <p className="plans-field-error" id="membership-email-error" role="alert">{emailError}</p>}</div>}
+          <dl className="plans-order" aria-live="polite"><div><dt>已選方案</dt><dd>{selectedPlan.name}</dd></div><div><dt>續費方式</dt><dd>不自動續扣</dd></div><div className="plans-order-total"><dt>本次付款</dt><dd><small>NT$</small> {selectedPlan.price}</dd></div></dl>
+          <button type="submit" className="plans-pay" disabled={submitting || !lineName}>{submitting ? '正在建立付款單…' : lineName ? `以 NT$${selectedPlan.price} 購買${selectedPlan.duration}方案` : '登入後即可購買'}<ArrowRight size={18} aria-hidden="true" /></button><p className="plans-payment-note"><LockKeyhole size={16} aria-hidden="true" />付款由綠界科技 ECPay 處理。實際可選方式以付款頁面為準。</p>
         </section>
-      </main>
-    );
-
-  return (
-    <main id="main-content" aria-labelledby="member-benefits-title" className="membership-page min-h-screen overflow-hidden bg-[#f7f8f5] px-4 py-5 text-slate-900 sm:px-6 sm:py-10">
-      <section className="relative mx-auto max-w-6xl">
-        <nav aria-label="會員頁面導覽" className="flex items-center justify-between">
-          <a
-            href={withBasePath("/")}
-            className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-4 py-2 text-sm font-bold shadow-[3px_3px_0_#161b35] transition-all hover:-translate-y-0.5 active:translate-y-0 active:shadow-none"
-          >
-            <ArrowRight className="h-4 w-4 rotate-180" />
-            回到落點分析
-          </a>
-          <span className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-[#e7edce] px-4 py-2 text-sm font-bold text-slate-900 shadow-[3px_3px_0_#161b35]">
-            <Crown className="h-4 w-4 fill-amber-100 text-slate-900" />
-            會員中心
-          </span>
-        </nav>
-        <section className="member-benefits" aria-labelledby="member-benefits-title">
-          <div className="member-section-heading"><div><p className="member-eyebrow">MADE FOR YOUR JOURNEY</p><h1 id="member-benefits-title">一份會員，讓規劃更從容。</h1></div></div>
-          <div className="member-benefit-grid">
-            {[
-              { icon: EyeOff, title: '純淨，沒有打擾', text: '關閉廣告，把注意力留給每一次重要的選擇。', label: '免廣告體驗' },
-              { icon: KeyRound, title: '探索，不設次數', text: '免輸入授權碼，隨時分析成績與可能的落點。', label: '無限次數分析' },
-              { icon: Sparkles, title: '一分，更多可能', text: '調整各科級分，看看努力能帶來哪些新選擇。', label: '一分改變分析' },
-              { icon: MessageCircle, title: '一起，找到方向', text: '邀請家人協作志願表，留言討論、保留版本。', label: '家長協作' },
-            ].map(({ icon: Icon, title, text, label }, index) => <article className="member-benefit" key={title}><div className="member-benefit-top"><Icon className="h-5 w-5" strokeWidth={1.5} /><span>0{index + 1}</span></div><p className="member-benefit-label">{label}</p><h3>{title}</h3><p>{text}</p></article>)}
-          </div>
-        </section>
-        <div id="membership-plans" className="member-purchase-grid">
-          <div className="min-w-0">
-        <section aria-labelledby="membership-plans-title" className="member-plan-section">
-          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-            <div>
-              <div className="flex items-center gap-3">
-                <span className="grid h-8 w-8 place-items-center rounded-full border-2 border-slate-900 bg-[#e7edce] text-sm font-bold">
-                  1
-                </span>
-                <p className="text-xs font-bold tracking-[.18em] text-emerald-600">
-                  選擇方案
-                </p>
-              </div>
-              <h2 id="membership-plans-title" className="mt-2 text-2xl font-bold">選擇適合你的專注時光</h2>
-              <button type="button" onClick={() => setShowPlanComparison(true)} className="member-comparison-link" aria-haspopup="dialog">比較會員權益 <ArrowRight aria-hidden="true" className="h-4 w-4" /></button>
-            </div>
-          </div>
-          <div role="radiogroup" aria-label="選擇會員方案" className="mt-4 grid gap-4 sm:grid-cols-2">
-            {plans.map((plan) => {
-              const active = plan.id === selected;
-              return (
-                <button
-                  type="button"
-                  key={plan.id}
-                  onClick={() => setSelected(plan.id)}
-                  role="radio"
-                  aria-checked={active}
-                  aria-label={`${plan.name}，NT$ ${plan.price}，${plan.duration}${active ? '，目前已選擇' : ''}`}
-                  className={`member-plan relative overflow-hidden rounded-3xl border p-6 text-left transition sm:p-6 ${active ? "border-emerald-700 bg-white shadow-[3px_3px_0_#161b35] ring-2 ring-emerald-700" : "border-stone-200 bg-white/70 hover:border-emerald-400 hover:bg-white"}`}
-                >
-                  {plan.featured && (
-                    <span className="absolute right-5 top-0 rounded-b-xl border-x border-b-2 border-slate-900 bg-[#e7edce] px-3 py-1.5 text-xs font-bold">
-                      入門推薦
-                    </span>
-                  )}
-                  <div className="flex items-start justify-between">
-                    <div
-                      className={`grid h-10 w-10 place-items-center rounded-xl border-2 border-slate-900 ${plan.accent === "emerald" ? "bg-emerald-900 text-white" : "bg-emerald-100 text-slate-900"}`}
-                    >
-                      <Crown className="h-5 w-5" />
-                    </div>
-                    {active && (
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-emerald-100 px-2 py-1 text-xs font-bold ${plan.featured ? "absolute right-4 top-11" : ""}`}
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                        已選擇
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="mt-3 text-xl font-bold">{plan.name}</h3>
-                  <p className="mt-1 text-sm font-bold text-slate-500">
-                    {plan.note}
-                  </p>
-                  <p
-                    className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-bold ${plan.featured ? "bg-amber-100 text-amber-800" : "bg-emerald-50 text-emerald-700"}`}
-                  >
-                    {plan.comparison}
-                  </p>
-                  <p className="mt-5 text-4xl font-bold tracking-tight tabular-nums">
-                    <span className="mr-1.5 text-sm font-medium text-slate-500">NT$</span>{plan.price}
-                    <span className="ml-2 text-sm font-medium text-slate-500">
-                      ／{plan.duration}
-                    </span>
-                  </p>
-                  <div className="mt-5 flex items-center gap-2 border-t border-stone-100 pt-4 text-xs font-medium text-emerald-800"><Check className="h-4 w-4" />全部會員權益<span className="text-stone-300">／</span>到期不自動續扣</div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        <section
-          aria-labelledby="membership-email-title"
-          className="mt-6 rounded-[2rem] border-2 border-slate-900 bg-white p-5 shadow-[3px_3px_0_#161b35] sm:p-7"
-        >
-          <div className="flex items-center gap-3">
-            <span className="grid h-8 w-8 place-items-center rounded-full border-2 border-slate-900 bg-emerald-100 text-sm font-bold">
-              2
-            </span>
-            <p className="text-xs font-bold tracking-[.18em] text-emerald-700">
-              付款人資料（必填）
-            </p>
-          </div>
-          <h2 id="membership-email-title" className="mt-3 text-xl font-bold">填寫付款資料</h2>
-          <p className="mt-1 text-sm font-normal leading-6 text-slate-500">
-            付款人姓名用於訂單核對；付款確認與到期提醒將寄送至此信箱。
-          </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div>
-              <label htmlFor="membership-payer-name" className="text-sm font-bold text-slate-700">付款人姓名</label>
-              <input
-                id="membership-payer-name"
-                type="text"
-                autoComplete="name"
-                maxLength={80}
-                placeholder="請輸入真實姓名"
-                value={payerName}
-                onChange={(e) => { setPayerName(e.target.value); setPayerNameError(""); }}
-                className={`mt-1 w-full rounded-2xl border bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-stone-200 focus:bg-white ${payerNameError ? "border-red-400 bg-red-50" : "border-slate-200"}`}
-              />
-              {payerNameError && <p role="alert" className="mt-2 text-xs font-bold text-red-600">{payerNameError}</p>}
-            </div>
-            <div>
-            <label htmlFor="membership-email" className="text-sm font-bold text-slate-700">付款人電子信箱</label>
-            <input
-              id="membership-email"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              placeholder="your@email.com"
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setEmailError(""); }}
-              className={`mt-1 w-full rounded-2xl border bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-stone-200 focus:bg-white ${emailError ? "border-red-400 bg-red-50" : "border-slate-200"}`}
-            />
-            {emailError && (
-              <p role="alert" className="mt-2 text-xs font-bold text-red-600">{emailError}</p>
-            )}
-            </div>
-          </div>
-        </section>
-
-
-          </div>
-          <aside className="member-order" aria-labelledby="membership-checkout-title">
-            <div className="member-order-heading"><LockKeyhole className="h-5 w-5" /><span>最後一步 · 確認與付款</span></div>
-            <h2 id="membership-checkout-title">開始你的專注時光</h2>
-            <p className="member-order-intro">會員資格將綁定 LINE 帳號，換裝置也能輕鬆找回。</p>
-            <div className="member-login-status"><span className="member-login-icon">{lineName ? <BadgeCheck className="h-5 w-5" /> : <LogIn className="h-5 w-5" />}</span><div className="min-w-0"><p className="break-words font-semibold">{lineName || '登入 LINE 以繼續'}</p><p className="mt-1 text-xs text-slate-500">{lineName ? '身分已確認' : '安全連結你的會員資格'}</p></div></div>
-            {lineName ? <div className="mt-3 flex items-center justify-between gap-3 text-xs"><a href={withBasePath('/membership/account')} className="font-semibold text-emerald-800 underline underline-offset-4">我的帳號與訂單</a><button type="button" onClick={logoutFromLine} className="rounded-lg px-3 py-2 text-slate-500 hover:bg-stone-100">登出 LINE</button></div> : <button type="button" onClick={loginWithLine} className="member-line-button"><img src={withBasePath('/brand/line/line-login.png')} width={44} height={44} alt="" aria-hidden="true" /><span>使用 LINE 登入</span></button>}
-            <dl className="member-order-details" aria-live="polite"><div><dt>已選方案</dt><dd>{selectedPlan.name}</dd></div><div><dt>使用期限</dt><dd>{selectedPlan.duration}</dd></div><div><dt>續費方式</dt><dd>不自動續扣</dd></div><div className="member-order-total"><dt>本次付款</dt><dd><span>NT$</span> {selectedPlan.price}</dd></div></dl>
-            <button type="button" onClick={checkout} disabled={submitting || !lineName} className="member-pay-button">{submitting ? '正在建立付款單…' : lineName ? '前往安全付款' : '請先登入 LINE'}<ArrowRight className="h-4 w-4" /></button>
-            <p className="member-payment-note"><Shield className="h-4 w-4 shrink-0" />由綠界科技 ECPay 安全處理付款</p>
-          </aside>
-        </div>
-
-        {notice && (
-          <p
-            role="status"
-            aria-live="polite"
-            className="mt-5 rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm font-bold text-amber-900"
-          >
-            {notice}
-          </p>
-        )}
-        <section aria-labelledby="membership-faq-title" className="relative mt-10 overflow-hidden rounded-[2rem] border-2 border-slate-900 bg-white p-5 shadow-[3px_3px_0_#161b35] sm:p-8">
-          <div aria-hidden="true" className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-amber-100" />
-          <div className="relative border-b-2 border-slate-900 pb-6">
-            <div className="flex items-start gap-4">
-              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border-2 border-slate-900 bg-[#e7edce] text-slate-900"><HelpCircle className="h-6 w-6" /></div>
-              <div><p className="text-[10px] font-bold tracking-[.2em] text-amber-700">MEMBERSHIP FAQ</p><h2 id="membership-faq-title" className="mt-1 text-2xl font-bold sm:text-3xl">常見問題</h2><p className="mt-2 text-sm font-normal leading-6 text-slate-600">付款、會員資格與使用方式，一次整理給你。</p></div>
-            </div>
-          </div>
-          <div className="relative mt-5 grid gap-3">
-            {membershipFaqs.map((faq, index) => (
-              <details key={faq.q} className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 transition open:border-emerald-300 open:bg-emerald-50/60 sm:px-5">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-4 font-bold [&::-webkit-details-marker]:hidden">
-                  <span className="flex min-w-0 items-center gap-3"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white text-[11px] font-bold text-emerald-700 shadow-[3px_3px_0_#161b35]">{String(index + 1).padStart(2, '0')}</span><span className="text-sm leading-6 text-slate-800">{faq.q}</span></span>
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-lg leading-none text-slate-500 transition group-open:rotate-45 group-open:border-emerald-300 group-open:text-emerald-700">+</span>
-                </summary>
-                <div className="border-t border-emerald-100 pb-4 pt-3">
-                  <p className="text-sm font-normal leading-7 text-slate-600">{faq.a}</p>
-                  {faq.q === '支援哪些付款方式？' && (
-                    <div className="mt-4 grid gap-3 rounded-2xl border border-emerald-100 bg-[#f7f9ff] p-3 sm:p-4 md:grid-cols-[1fr_1.25fr]">
-                      <div className="rounded-xl border border-emerald-100 bg-white p-3 shadow-[3px_3px_0_#161b35]">
-                        <div className="mb-2 flex items-center gap-2">
-                          <div className="grid h-7 w-7 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
-                            <CreditCard className="h-3.5 w-3.5" />
-                          </div>
-                          <p className="text-xs font-bold text-slate-700">信用卡付款</p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          {paymentMethods.card.map((method) => (
-                            <span key={method} className="flex min-h-10 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50/60 px-2 py-2 text-center text-xs font-bold text-emerald-900">{method}</span>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-[3px_3px_0_#161b35]">
-                        <p className="mb-2 text-xs font-bold text-slate-700">非信用卡付款</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {paymentMethods.other.map((method) => (
-                            <span key={method} className="flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-center text-xs font-bold text-slate-700">{method}</span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </details>
-            ))}
-          </div>
-        </section>
-        <MembershipSupportLinks />
-      </section>
-      {showPlanComparison && <div className="fixed inset-0 z-[160] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setShowPlanComparison(false); }}>
-        <section role="dialog" aria-modal="true" aria-labelledby="plan-comparison-title" className="max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto rounded-[2rem] border-2 border-slate-900 bg-white p-5 shadow-[3px_3px_0_#161b35] sm:p-7">
-          <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold tracking-[.18em] text-emerald-700">SMART UPGRADE</p><h2 id="plan-comparison-title" className="mt-1 text-2xl font-bold leading-tight sm:text-3xl">把時間留給選擇，<span className="text-emerald-700">不要留給限制</span></h2><p className="mt-2 text-sm font-normal leading-6 text-slate-600">會員可以更自在地反覆分析、調整志願，還能邀請家人一起討論到確認。</p></div><button type="button" aria-label="關閉會員比較" onClick={() => setShowPlanComparison(false)} className="rounded-xl border-2 border-slate-900 p-2 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
-          <div className="mt-6 grid gap-3 md:grid-cols-2"><div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5"><div className="flex items-start justify-between gap-3"><div><h3 className="text-lg font-bold text-slate-700">非會員</h3><p className="mt-1 text-xs font-bold text-slate-500">可以試用，但每次規劃都會遇到限制</p></div><span className="rounded-full bg-slate-200 px-2 py-1 text-[10px] font-bold text-slate-600">基本使用</span></div><ul className="mt-5 space-y-3 text-sm font-bold text-slate-600">{['可查看公開升學資訊與基本探索功能','分析前需依提示輸入使用授權','沒有免廣告體驗，分析途中可能被打斷','無法使用家長共編與版本還原','一般分享有期限，較適合短暫參考'].map(item => <li key={item} className="flex gap-2"><X className="h-4 w-4 shrink-0 text-slate-400" />{item}</li>)}</ul><p className="mt-5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium leading-5 text-slate-500">只想先看看資料，可以從這裡開始。</p></div><div className="relative overflow-hidden rounded-2xl border border-emerald-900 bg-emerald-900 p-4 text-white shadow-[3px_3px_0_#161b35] sm:p-5"><span className="absolute right-3 top-3 rounded-full bg-[#e7edce] px-2 py-1 text-[10px] font-bold text-slate-900">最適合實際選志願</span><h3 className="text-lg font-bold">會員</h3><p className="mt-1 text-xs font-bold text-emerald-100">把反覆比較、全家討論一次打通</p><ul className="mt-5 space-y-3 text-sm font-bold text-emerald-50">{['全程免廣告，專心完成分析','免輸入授權碼，直接開始落點分析','無限次數落點分析與一分改變分析','家長協作志願表、留言與版本還原','分享連結與期限管理更完整','一次付款，到期不自動續扣'].map(item => <li key={item} className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-amber-300" />{item}</li>)}</ul><p className="mt-5 rounded-xl border border-emerald-300/50 bg-emerald-700/60 px-3 py-2 text-xs font-medium leading-5 text-white">如果你正在整理志願、要和家人討論，會員才是完整版本。</p></div></div>
-          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={() => setShowPlanComparison(false)} className="rounded-xl border-2 border-slate-900 px-4 py-3 text-sm font-bold">先看看</button><button type="button" onClick={() => { setShowPlanComparison(false); document.getElementById('membership-checkout-title')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-[#e7edce] px-4 py-3 text-sm font-bold shadow-[3px_3px_0_#161b35]">查看方案並升級 <ArrowRight className="h-4 w-4" /></button></div>
-        </section>
-      </div>}
-    </main>
-  );
+      </form>
+    </>}
+    {membership !== null && !(isSuccessPage && !membership.active) && <section className="plans-faq" aria-labelledby="membership-faq-title"><div className="plans-section-heading"><HelpCircle size={25} aria-hidden="true" /><div><h2 id="membership-faq-title">購買與使用常見問題</h2><p>付款方式、資格確認與使用提醒。</p></div></div><div>{membershipFaqs.map(faq => <details key={faq.q}><summary>{faq.q}<ChevronDown size={18} aria-hidden="true" /></summary><p>{faq.a}</p>{faq.q === '支援哪些付款方式？' && <ul className="plans-payment-methods">{[...paymentMethods.card,...paymentMethods.other].map(method => <li key={method}>{method}</li>)}</ul>}</details>)}</div></section>}
+    <MembershipSupportLinks />
+  </div></main>;
 }

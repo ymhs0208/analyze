@@ -47,6 +47,63 @@
   }
 }
 
+/* Give older pages the same light surface treatment as the redesigned tools. */
+:where(#root) :is([class~="border-slate-900"], [class~="border-black"]) {
+  border-color: #d4ddeb;
+}
+
+:where(#root) :is([class~="border-2"], [class~="border-4"]):is([class~="border-slate-900"], [class~="border-black"]) {
+  border-width: 1px;
+}
+
+:where(#root) :is([class~="border-b-2"], [class~="border-b-4"]):is([class~="border-slate-900"], [class~="border-black"]) { border-bottom-width: 1px; }
+:where(#root) :is([class~="border-t-2"], [class~="border-t-4"]):is([class~="border-slate-900"], [class~="border-black"]) { border-top-width: 1px; }
+:where(#root) :is([class~="border-l-2"], [class~="border-l-4"]):is([class~="border-slate-900"], [class~="border-black"]) { border-left-width: 1px; }
+:where(#root) :is([class~="border-r-2"], [class~="border-r-4"]):is([class~="border-slate-900"], [class~="border-black"]) { border-right-width: 1px; }
+:where(#root) :is([class~="border-x-2"], [class~="border-x-4"]):is([class~="border-slate-900"], [class~="border-black"]) { border-inline-width: 1px; }
+:where(#root) :is([class~="border-y-2"], [class~="border-y-4"]):is([class~="border-slate-900"], [class~="border-black"]) { border-block-width: 1px; }
+
+:where(#root) :is(
+  [class*="shadow-["][class*="_0px_0px_"],
+  [class*="shadow-["][class*="_0_#"],
+  [class*="shadow-["][class*="_0_0_#"]
+) {
+  box-shadow: 0 8px 24px rgba(36, 52, 91, 0.11);
+}
+
+:where(#root) :is(
+  [class*="hover:shadow-["][class*="_0px_0px_"],
+  [class*="hover:shadow-["][class*="_0_#"],
+  [class*="hover:shadow-["][class*="_0_0_#"]
+):hover {
+  box-shadow: 0 12px 28px rgba(36, 52, 91, 0.16);
+}
+
+:where(#root) [class*="active:shadow-none"]:active { box-shadow: none; }
+
+:where(#root) :is([class~="border-slate-900"], [class~="border-black"]):focus-visible {
+  border-color: #596fc1;
+}
+
+@media (prefers-contrast: more), (forced-colors: active) {
+  :where(#root) :is([class~="border-slate-900"], [class~="border-black"]) {
+    border-color: currentColor;
+  }
+}
+
+/* Keep the footer's original framed sections and clear dividers. */
+:where(#root) .site-footer[class~="border-t-4"] { border-top-width: 4px; border-top-color: #0f172a; }
+:where(#root) .site-footer [class~="border-slate-900"] { border-color: #0f172a; }
+:where(#root) .site-footer [class~="border-2"] { border-width: 2px; }
+:where(#root) .site-footer [class~="border-y-2"] { border-block-width: 2px; }
+:where(#root) .site-footer [class~="border-r-2"] { border-right-width: 2px; }
+:where(#root) .site-footer [class~="border-t-2"] { border-top-width: 2px; }
+:where(#root) .site-footer nav a:last-child { border-right-width: 0; }
+
+@media (prefers-contrast: more), (forced-colors: active) {
+  :where(#root) .site-footer [class~="border-slate-900"] { border-color: currentColor; }
+}
+
 /* Disclaimer page hero: use the same light, welcoming palette as the guide pages. */
 .disclaimer-page > section:first-child {
   background-color: #fffbeb;
@@ -71,24 +128,6 @@
 
 .disclaimer-page > section:first-child [class*="rgba(255,255,255"] {
   box-shadow: 5px 5px 0 0 #0f172a;
-}
-
-/* Keep the full-disclaimer link visually secondary and inside the scrollable modal content. */
-.custom-scrollbar > a[href*="/disclaimer"] {
-  display: none;
-  width: fit-content;
-  margin-left: auto;
-  padding: 0.65rem 0.9rem;
-  border: 2px solid #0f172a;
-  border-radius: 0.75rem;
-  background: #ffffff;
-  box-shadow: 2px 2px 0 0 #0f172a;
-  text-decoration: none;
-}
-
-.custom-scrollbar > a[href*="/disclaimer"]:hover {
-  background: #f8fafc;
-  transform: translateY(-1px);
 }
 
 @layer utilities {
@@ -281,4 +320,9 @@
       font-size: 0.875rem;
     }
   }
+}
+
+/* Shared guide navigation: keep links comfortable to tap on smaller screens. */
+@media (max-width: 850px) {
+  [data-page-navigation] a { min-height: 44px; }
 }

@@ -1,9 +1,11 @@
 import VocationalComparePage from './components/VocationalComparePage';
 import { lazy, StrictMode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Lightbulb } from 'lucide-react';
+import { GraduationCap, Lightbulb } from 'lucide-react';
 import './index.css';
+import './page-loading.css';
 import { getCurrentRoutePath, withBasePath } from './lib/routes.ts';
+import { getDepartmentFromPath } from './lib/vocationalDepartments.ts';
 import { applyPageSeo } from './lib/seo.ts';
 import RelatedReading from './components/RelatedReading.tsx';
 import Footer from './components/layout/Footer.tsx';
@@ -35,6 +37,7 @@ const SearchPage = lazy(() => import('./components/SearchPage.tsx'));
 const ResultsPage = lazy(() => import('./components/ResultsPage.tsx'));
 const ScoreChangePage = lazy(() => import('./components/ScoreChangePage.tsx'));
 const ScoreRecordsPage = lazy(() => import('./components/ScoreRecordsPage.tsx'));
+const ScoreInquiryPage = lazy(() => import('./components/ScoreInquiryPage.tsx'));
 const ComparisonPage = lazy(() => import('./components/ComparisonPage.tsx'));
 const ReportErrorPage = lazy(() => import('./components/ReportErrorPage.tsx'));
 const SharedReportPage = lazy(() => import('./components/SharedReportPage.tsx'));
@@ -49,29 +52,27 @@ const MembershipPage = lazy(() => import('./components/MembershipPage.tsx'));
 const MembershipAccountPage = lazy(() => import('./components/MembershipAccountPage.tsx'));
 const PrivacyCenterPage = lazy(() => import('./components/PrivacyCenterPage.tsx'));
 const VocationalEncyclopediaPage = lazy(() => import('./components/VocationalEncyclopediaPage.tsx'));
+const VocationalDepartmentsPage = lazy(() => import('./components/VocationalDepartmentsPage.tsx'));
+const VocationalDepartmentDetailPage = lazy(() => import('./components/VocationalDepartmentDetailPage.tsx'));
 const RegionScoringRulesPage = lazy(() => import('./components/RegionScoringRulesPage.tsx'));
 const AreaPage = lazy(() => import('./components/AreaPage.tsx'));
 
 function PageLoading() {
   return (
-    <div className="fixed inset-0 z-[100] grid min-h-[100dvh] place-items-center overflow-hidden bg-slate-50 px-5 text-slate-900" role="status" aria-live="polite" aria-label="正在準備頁面">
-      <div className="pointer-events-none absolute -left-24 top-16 h-64 w-64 rounded-full bg-amber-300/50 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-20 -right-20 h-72 w-72 rounded-full bg-sky-300/45 blur-3xl" />
-      <section className="relative w-full max-w-sm overflow-hidden rounded-[2rem] border-4 border-slate-900 bg-white shadow-[6px_6px_0px_0px_rgba(15,23,42,1)]">
-        <div className="relative overflow-hidden border-b-4 border-slate-900 bg-indigo-500 px-6 py-6 text-white">
-          <div aria-hidden="true" className="absolute -right-6 -top-8 grid h-28 w-28 place-items-center rounded-full border-4 border-slate-900 bg-amber-300 text-slate-900"><Lightbulb className="h-8 w-8" strokeWidth={2.5} /></div>
-          <p className="relative text-xs font-black tracking-[0.18em] text-indigo-100">會考落點分析</p>
-          <h1 className="relative mt-1 text-xl font-black tracking-tight">正在準備頁面</h1>
+    <div className="page-loading" role="status" aria-live="polite" aria-label="正在準備頁面">
+      <section className="page-loading-content">
+        <div className="page-loading-heading">
+          <span className="page-loading-emblem" aria-hidden="true"><GraduationCap size={25} strokeWidth={1.8} /></span>
+          <p className="page-loading-kicker">116 學年度會考落點分析</p>
         </div>
-        <div className="p-6">
-          <div className="flex items-center justify-between gap-3">
-            <div><p className="text-sm font-black">資料整理中</p><p className="mt-1 text-xs font-bold text-slate-500">請稍候，馬上為你開啟內容。</p></div>
-            <div className="flex items-end gap-1.5" aria-hidden="true"><span className="h-3 w-3 animate-bounce rounded-sm border-2 border-slate-900 bg-amber-300" /><span className="h-5 w-3 animate-bounce rounded-sm border-2 border-slate-900 bg-sky-300 [animation-delay:150ms]" /><span className="h-7 w-3 animate-bounce rounded-sm border-2 border-slate-900 bg-rose-300 [animation-delay:300ms]" /></div>
-          </div>
-          <div className="mt-6 h-4 overflow-hidden rounded-full border-2 border-slate-900 bg-slate-100 p-0.5" aria-hidden="true"><div className="h-full w-2/3 animate-pulse rounded-full bg-gradient-to-r from-indigo-500 via-sky-400 to-amber-300" /></div>
-          <div className="-mx-6 -mb-6 mt-5 flex items-start gap-2 border-t-2 border-amber-200 bg-amber-50 px-6 py-2.5">
-            <span className="text-base" aria-hidden="true">💡</span>
-            <p className="text-xs font-bold leading-5 text-amber-950"><span className="font-black text-amber-700">選填志願技巧：</span>先把志願分成挑戰、適中與安全三個層級。</p>
+        <h1>正在準備頁面</h1>
+        <p className="page-loading-description">正在整理升學資訊，請稍候片刻。</p>
+        <div className="page-loading-details">
+          <div className="page-loading-progress-label"><span>載入內容中</span><span>請稍候</span></div>
+          <div className="page-loading-progress" aria-hidden="true"><span /></div>
+          <div className="page-loading-tip">
+            <Lightbulb size={18} aria-hidden="true" />
+            <p><strong>選填志願小提醒</strong><span>先把志願分成挑戰、適中與安全三個層級。</span></p>
           </div>
         </div>
       </section>
@@ -87,6 +88,8 @@ const sharedReportToken = path.match(/^\/shared\/([0-9a-f-]+)$/i)?.[1];
 const scoringRulesRegionId = path.match(/^\/scoring-rules\/([a-z-]+)$/)?.[1];
 const areaSlug = path.match(/^\/area\/([a-z-]+)$/)?.[1];
 const newsArticleId = path.match(/^\/news\/(\d+)$/)?.[1];
+const departmentRouteSegment = path.match(/^\/departments\/([^/]+)$/)?.[1];
+const department = departmentRouteSegment ? getDepartmentFromPath(departmentRouteSegment) : undefined;
 const redirectedRoute = new URLSearchParams(window.location.search).get('route');
 if (redirectedRoute) {
   // GitHub Pages redirects deep links through ?route=… . Keep any other
@@ -126,6 +129,7 @@ const page =
   path === '/results' ? <ResultsPage /> :
   path === '/score-change' ? <ScoreChangePage /> :
   path === '/score-records' ? <ScoreRecordsPage /> :
+  path === '/score-inquiry' ? <ScoreInquiryPage /> :
   path === '/compare' ? <ComparisonPage /> :
   path === '/report-error' ? <ReportErrorPage /> :
   sharedReportToken ? <SharedReportPage token={sharedReportToken} /> :
@@ -146,12 +150,14 @@ const page =
   path === '/refund-cancellation-policy' ? <SupportPolicyPage kind="refund-cancellation" /> :
   path === '/vocational-compare' ? <VocationalComparePage /> :
   path === '/vocational-encyclopedia' ? <VocationalEncyclopediaPage /> :
+  path === '/departments' ? <VocationalDepartmentsPage /> :
+  departmentRouteSegment ? <VocationalDepartmentDetailPage department={department} /> :
   scoringRulesRegionId ? <RegionScoringRulesPage regionId={scoringRulesRegionId} /> :
   areaSlug ? <AreaPage slug={areaSlug} /> :
   <App />;
 
-const informationalPaths = new Set(['/advantages', '/disclaimer', '/faq-glossary', '/five-year-college-rules', '/grade-level', '/grade-11-pathways', '/future-pathways', '/life-feasibility', '/general-comprehensive-high-school', '/historical-stats', '/important-dates', '/instructions', '/holland', '/school-types', '/strategy', '/vocational-encyclopedia']);
-const showRelatedReading = informationalPaths.has(path) || Boolean(newsArticleId) || path.startsWith('/scoring-rules/') || path.startsWith('/area/');
+const informationalPaths = new Set(['/advantages', '/disclaimer', '/faq-glossary', '/five-year-college-rules', '/grade-level', '/grade-11-pathways', '/future-pathways', '/life-feasibility', '/general-comprehensive-high-school', '/historical-stats', '/important-dates', '/instructions', '/holland', '/school-types', '/strategy', '/vocational-encyclopedia', '/departments']);
+const showRelatedReading = informationalPaths.has(path) || Boolean(department) || Boolean(newsArticleId) || path.startsWith('/scoring-rules/') || path.startsWith('/area/');
 const pagesWithoutSharedFooter = new Set(['/', '/results', '/compare', '/holland', '/support/success', '/support/failed']);
 const showSharedFooter = !pagesWithoutSharedFooter.has(path) && !sharedReportToken;
 
