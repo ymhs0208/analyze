@@ -56,3 +56,35 @@ ECPay callback 仍維持 Supabase `ecpay-callback` Function；不需放入 Cloud
 本專案已鎖定 Wrangler 版本，可直接用 `npx wrangler deploy --dry-run` 驗證建置與部署設定。Cloudflare 必須先連接本儲存庫的 `main` 分支，推送才會觸發自動部署。
 
 Worker 會提供 `dist` 靜態資產、處理單頁路由回退，並在 HTTP 回應實際加入 CSP 與反嵌入安全標頭。
+
+## Cloudflare Worker 同網域 API 轉接
+
+Worker 提供以下三個 API，其他 `/functions/*` 路徑回應 404：
+
+- `/functions/v1/backend`
+- `/functions/v1/line-login`
+- `/functions/v1/ecpay-callback`
+
+以正式網站 `https://analyze.twexam.cc.cd` 為例，設定方式如下：
+
+1. Cloudflare **Settings → Builds → Variables and secrets**（建置變數）：
+   - `VITE_SUPABASE_URL=https://analyze.twexam.cc.cd`
+   - `VITE_SUPABASE_ANON_KEY=<原本的公開 anon key>`
+2. `wrangler.jsonc` 已設定執行變數 `SUPABASE_URL=https://ujltpbzlspbustqjqnar.supabase.co`。
+   - 上游網址必須是原本 Supabase 網址，不能填網站本身，避免轉接迴圈。
+   - `.env.production` 預設前端 API 為 `https://analyze.twexam.cc.cd`；Cloudflare 已有的同名建置變數會覆蓋此預設，請同步更新。
+   - 更換上游專案時修改 `wrangler.jsonc`，`keep_vars` 會保留其他 Dashboard 執行變數。
+3. Supabase **Edge Functions → Secrets**：
+   - `ALLOWED_ORIGINS=https://analyze.twexam.cc.cd`（如需保留其他網站，用逗號分隔）
+   - `SITE_URL=https://analyze.twexam.cc.cd`
+4. 儲存後重新建置部署，並確認登入、登出與付款狀態查詢正常。
+
+若要讓 LINE callback 也使用自己的網域，請將 Supabase 的
+`LINE_LOGIN_CALLBACK_URL` 與 LINE Developers 的 callback URL **一起改為**
+`https://analyze.twexam.cc.cd/functions/v1/line-login`。只改其中一處會導致登入失敗。
+ECPay 原有 Supabase callback 網址可繼續使用。
+
+前端金鑰仍只使用公開 anon key。service role、LINE channel secret 與綠界金鑰留在
+Supabase。轉接會保留瀏覽器 Origin、API 狀態、LINE 重新導向與 HttpOnly Cookie，
+停用 API 快取，並僅轉送會員與付款查詢 Cookie。未設定上游時，API 回應 503，網站
+靜態頁面仍可正常開啟。

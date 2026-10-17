@@ -62,6 +62,7 @@ jobs:
             fi
           done
           node --test security-audit/line-login-security.test.mjs security-audit/cookie-session-security.test.mjs security-audit/support-payment-security.test.mjs security-audit/brace-expansion-security.test.mjs
+          node --test security-audit/api-proxy.test.mjs
 
       - name: Build production site
         run: npm run build
