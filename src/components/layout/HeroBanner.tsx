@@ -1,7 +1,8 @@
+import { memo } from 'react';
 import { motion } from 'motion/react';
 import { Sparkles } from 'lucide-react';
 
-export default function HeroBanner() {
+function HeroBanner() {
   return (
     <motion.section
       initial={{ opacity: 0, y: 18 }}
@@ -20,3 +21,5 @@ export default function HeroBanner() {
     </motion.section>
   );
 }
+
+export default memo(HeroBanner);

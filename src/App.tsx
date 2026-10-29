@@ -1,4 +1,4 @@
-import React, { Suspense, useState, useEffect, useLayoutEffect } from "react";
+import React, { Suspense, useCallback, useRef, useState, useEffect, useLayoutEffect } from "react";
 import { parseLineGuideImport } from "./lib/lineGuide";
 import { motion, AnimatePresence, MotionConfig } from "motion/react";
 import {
@@ -8,7 +8,6 @@ import {
   BookOpen,
   Calculator,
   Award,
-  PenTool,
   Search,
   Building2,
   Map,
@@ -32,23 +31,14 @@ import {
   List,
   QrCode,
   Check,
-  Menu,
   X,
   Filter,
-  Share2,
-  Mail,
-  Link as LinkIcon,
   Target,
   Lightbulb,
   Flame,
   ShieldCheck,
   Layers,
-  Brain,
-  Copyright,
   Database,
-  Instagram,
-  AtSign,
-  Languages,
   GraduationCap,
   Presentation,
   UsersRound,
@@ -73,10 +63,10 @@ import RegionScoringModal, {
 } from "./components/RegionScoringModal";
 // Layout Components
 import AppHeader from "./components/layout/AppHeader";
-import NavigationDrawer from "./components/layout/NavigationDrawer";
 import Footer from "./components/layout/Footer";
 import HeroBanner from "./components/layout/HeroBanner";
 import MembershipPromo from "./components/MembershipPromo";
+import ExamScores, { applyScoreValues, emptyScores, type ScoreSetters, type ScoreValues } from "./components/home/ExamScores";
 import "./components/home-page.css";
 import {
   formatSchoolOwnership,
@@ -344,16 +334,6 @@ function HistoricalScoresModal({
   );
 }
 
-const gradeOptions = [
-  { value: "A++", label: "A++ (精熟)" },
-  { value: "A+", label: "A+ (精熟)" },
-  { value: "A", label: "A (精熟)" },
-  { value: "B++", label: "B++ (基礎)" },
-  { value: "B+", label: "B+ (基礎)" },
-  { value: "B", label: "B (基礎)" },
-  { value: "C", label: "C (待加強)" },
-];
-
 export default function App() {
   const [formData, setFormData] = useState({
     invitationCode: "",
@@ -368,6 +348,9 @@ export default function App() {
     social: "",
     composition: "",
   });
+  const scoresRef = useRef<ScoreValues>(emptyScores());
+  const scoreSettersRef = useRef<ScoreSetters>({});
+  const readForm = () => ({ ...formData, ...scoresRef.current });
 
   const [status, setStatus] = useState<
     "idle" | "auth" | "quantum" | "success" | "error"
@@ -397,11 +380,6 @@ export default function App() {
   const [isHollandTestOpen, setIsHollandTestOpen] = useState(false);
   const [isRegionOpen, setIsRegionOpen] = useState(false);
   const [vocationalGroups, setVocationalGroups] = useState<string[]>(["all"]);
-  const [isExternalLinksOpen, setIsExternalLinksOpen] = useState(false);
-  const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
-  const [expandedNavCategory, setExpandedNavCategory] = useState<string | null>(
-    "schoolDetails",
-  );
   const [historicalScoreSchool, setHistoricalScoreSchool] = useState<
     any | null
   >(null);
@@ -419,7 +397,9 @@ export default function App() {
   useEffect(() => {
     const imported = parseLineGuideImport(window.location.hash);
     if (!imported) return;
-    setFormData((current) => ({ ...current, ...imported }));
+    const { region, ...importedScores } = imported;
+    setFormData((current) => ({ ...current, region }));
+    applyScoreValues(scoresRef, scoreSettersRef, importedScores);
     setScoreImportNotice({ message: "已帶入 LINE 逐步操作的就學區與成績，請確認後再開始分析。", tone: "success" });
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
   }, []);
@@ -427,9 +407,9 @@ export default function App() {
   // Comparison
   const [comparisonSchools, setComparisonSchools] =
     useState<any[]>(getComparisonSchools);
-  // Read the restored scroll position on the first render. This prevents the
-  // fixed header from resizing just after the page has painted.
-  const [isScrolled, setIsScrolled] = useState(() => window.scrollY > 50);
+  const openSharePlatform = useCallback(() => {
+    setActiveModal("sharePlatform");
+  }, []);
 
   // Custom Result Filters
   const [resultFilterText, setResultFilterText] = useState("");
@@ -478,17 +458,6 @@ export default function App() {
         setVocationalGroups(recommendedGroups);
       }
     }
-  }, []);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const nextIsScrolled = window.scrollY > 50;
-      setIsScrolled((current) =>
-        current === nextIsScrolled ? current : nextIsScrolled,
-      );
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   useEffect(() => {
@@ -556,15 +525,14 @@ export default function App() {
   };
 
   const importSavedScore = (record: SavedScoreRecord) => {
-    setFormData((current) => ({
-      ...current,
+    applyScoreValues(scoresRef, scoreSettersRef, {
       chinese: record.scores.chinese,
       english: record.scores.english,
       math: record.scores.math,
       science: record.scores.science,
       social: record.scores.social,
       composition: String(record.scores.composition),
-    }));
+    });
     setScoreImportNotice({ message: `已帶入「${record.title}」的成績。`, tone: "success" });
     setActiveModal(null);
   };
@@ -611,7 +579,8 @@ export default function App() {
   };
 
   const handleAnalyze = async () => {
-    const invitationCode = normalizeInvitationCode(formData.invitationCode);
+    const form = readForm();
+    const invitationCode = normalizeInvitationCode(form.invitationCode);
     // Confirm against the server immediately before analysis. The browser state
     // is only a convenience for the UI; entitlement is never trusted here.
     const membership = await getMembershipStatus().catch(() => ({
@@ -621,13 +590,13 @@ export default function App() {
     setMemberAccess(hasMemberAccess);
     const missing: string[] = [];
     if (!hasMemberAccess && !invitationCode) missing.push("系統授權碼");
-    if (!formData.region) missing.push("就學考區");
-    if (!formData.chinese) missing.push("國文成績");
-    if (!formData.english) missing.push("英文成績");
-    if (!formData.math) missing.push("數學成績");
-    if (!formData.science) missing.push("自然成績");
-    if (!formData.social) missing.push("社會成績");
-    if (!formData.composition) missing.push("作文成績");
+    if (!form.region) missing.push("就學考區");
+    if (!form.chinese) missing.push("國文成績");
+    if (!form.english) missing.push("英文成績");
+    if (!form.math) missing.push("數學成績");
+    if (!form.science) missing.push("自然成績");
+    if (!form.social) missing.push("社會成績");
+    if (!form.composition) missing.push("作文成績");
 
     if (missing.length > 0) {
       setMissingFields(missing);
@@ -643,7 +612,7 @@ export default function App() {
       return;
     }
 
-    if (invitationCode !== formData.invitationCode) {
+    if (invitationCode !== form.invitationCode) {
       setFormData((prev) => ({ ...prev, invitationCode }));
     }
 
@@ -685,23 +654,24 @@ export default function App() {
 
   const executeAnalysis = async () => {
     try {
+      const form = readForm();
       const payload = {
         scores: {
-          chinese: formData.chinese,
-          english: formData.english,
-          math: formData.math,
-          science: formData.science,
-          social: formData.social,
-          composition: parseInt(formData.composition, 10) || 0,
+          chinese: form.chinese,
+          english: form.english,
+          math: form.math,
+          science: form.science,
+          social: form.social,
+          composition: parseInt(form.composition, 10) || 0,
         },
         filters: {
-          schoolOwnership: formData.schoolOwnership,
-          schoolType: formData.schoolType,
+          schoolOwnership: form.schoolOwnership,
+          schoolType: form.schoolType,
           vocationalGroups: vocationalGroups,
-          analysisIdentity: formData.identity,
+          analysisIdentity: form.identity,
         },
-        region: formData.region,
-        invitationCode: normalizeInvitationCode(formData.invitationCode),
+        region: form.region,
+        invitationCode: normalizeInvitationCode(form.invitationCode),
         timestamp: new Date().toISOString(),
         action: "analyzeScores",
         clientInfo: {
@@ -714,13 +684,13 @@ export default function App() {
       };
 
       const data = await callBackend<any>(payload);
-      const { invitationCode: _invitationCode, ...storedScores } = formData;
+      const { invitationCode: _invitationCode, ...storedScores } = form;
       sessionStorage.setItem(
         RESULTS_STORAGE_KEY,
         JSON.stringify({
           scores: storedScores,
           results: data,
-          identity: formData.identity,
+          identity: form.identity,
           vocationalGroups,
           createdAt: new Date().toISOString(),
         }),
@@ -762,7 +732,7 @@ export default function App() {
         return prev;
       }
       const regionName =
-        ALL_REGIONS.find((r) => r.id === formData.region)?.name || "未知";
+        ALL_REGIONS.find((r) => r.id === readForm().region)?.name || "未知";
       const next = [...prev, { ...school, region: regionName }];
       saveComparisonSchools(next);
       return next;
@@ -771,12 +741,13 @@ export default function App() {
 
   const handleExport = async (type: "txt" | "excel" | "json" | "print") => {
     if (!results) return;
+    const form = readForm();
     const regionName =
-      ALL_REGIONS.find((r) => r.id === formData.region)?.name || "未選擇";
+      ALL_REGIONS.find((r) => r.id === form.region)?.name || "未選擇";
     const payload = {
-      scores: formData,
+      scores: form,
       results,
-      identity: formData.identity,
+      identity: form.identity,
       vocationalGroups,
     };
 
@@ -854,9 +825,7 @@ export default function App() {
       <div className="home-background-orb absolute top-[10%] right-[-10%] w-[500px] h-[500px] bg-sky-300/20 rounded-full blur-[100px] pointer-events-none"></div>
 
       <AppHeader
-        isScrolled={isScrolled}
-        onShareClick={() => setActiveModal("sharePlatform")}
-        onMenuClick={() => setIsNavMenuOpen(true)}
+        onShareClick={openSharePlatform}
         setActiveModal={setActiveModal}
       />
 
@@ -1179,276 +1148,15 @@ export default function App() {
               </div>
             </motion.section>
 
-            {/* Scores Configuration */}
-            <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="home-scores-panel p-6 sm:p-8 bg-sky-100 border-[1.5px] border-slate-900 rounded-3xl shadow-[5px_5px_0px_0px_rgba(15,23,42,1)]"
-            >
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                <div>
-                  <h2 className="text-xl font-black flex items-center gap-2 text-slate-900 mb-1">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-slate-900 bg-indigo-100">
-                      <Calculator className="w-4 h-4 text-indigo-600" />
-                    </span>{" "}
-                    會考成績
-                  </h2>
-                  <p className="text-sm font-bold text-slate-600">
-                    填入成績，找出適合志願。
-                  </p>
-                </div>
-
-                <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
-                  {savedScoreRecords.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setActiveModal("savedScoreImport")}
-                      className="home-score-action home-score-action-primary"
-                    >
-                      <History className="h-4 w-4" />
-                      帶入已儲存成績
-                    </button>
-                  )}
-                  {savedScoreRecords.length === 0 &&
-                    isScoreAccountLoggedIn !== true && (
-                      <button
-                        type="button"
-                        onClick={loginForSavedScores}
-                        className="home-score-action"
-                      >
-                        <User className="h-4 w-4" />
-                        登入後儲存、帶入成績
-                      </button>
-                    )}
-                  {savedScoreRecords.length === 0 &&
-                    isScoreAccountLoggedIn === true && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          window.location.assign(
-                            withBasePath("/score-records"),
-                          );
-                        }}
-                        className="home-score-action"
-                      >
-                        <History className="h-4 w-4" />
-                        前往儲存成績
-                      </button>
-                    )}
-                </div>
-              </div>
-
-              <div className="home-subject-grid flex flex-col gap-3 sm:gap-4">
-                {[
-                  {
-                    id: "chinese",
-                    label: "國文",
-                    icon: BookOpen,
-                    color: "text-rose-600",
-                    bgBorder:
-                      "bg-rose-50 border-rose-300 focus:ring-rose-400 focus:border-rose-400 hover:border-rose-400",
-                    theme: "bg-white",
-                  },
-                  {
-                    id: "english",
-                    label: "英文",
-                    icon: Languages,
-                    color: "text-amber-600",
-                    bgBorder:
-                      "bg-amber-50 border-amber-300 focus:ring-amber-400 focus:border-amber-400 hover:border-amber-400",
-                    theme: "bg-white",
-                  },
-                  {
-                    id: "math",
-                    label: "數學",
-                    icon: Calculator,
-                    color: "text-blue-600",
-                    bgBorder:
-                      "bg-blue-50 border-blue-300 focus:ring-blue-400 focus:border-blue-400 hover:border-blue-400",
-                    theme: "bg-white",
-                  },
-                  {
-                    id: "science",
-                    label: "自然",
-                    icon: Activity,
-                    color: "text-emerald-600",
-                    bgBorder:
-                      "bg-white border-slate-300 focus:ring-slate-300 focus:border-slate-500 hover:border-slate-400",
-                    theme: "bg-white",
-                  },
-                  {
-                    id: "social",
-                    label: "社會",
-                    icon: Map,
-                    color: "text-purple-600",
-                    bgBorder:
-                      "bg-purple-50 border-purple-300 focus:ring-purple-400 focus:border-purple-400 hover:border-purple-400",
-                    theme: "bg-white",
-                  },
-                ].map((subject) => (
-                  <div
-                    key={subject.id}
-                    className={`relative group ${subject.theme} border-2 border-slate-900 rounded-2xl p-3 sm:p-4 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:-translate-y-1 hover:shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] transition-all flex flex-col gap-3`}
-                  >
-                    <div className="flex items-center justify-between gap-2 sm:gap-4">
-                      <label
-                        htmlFor={`score-${subject.id}`}
-                        className="text-base sm:text-lg font-black text-slate-700 flex items-center gap-3 shrink-0"
-                      >
-                        <div
-                          className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl border-2 border-slate-900 flex items-center justify-center shrink-0 bg-slate-50`}
-                        >
-                          <subject.icon
-                            className={`w-4 h-4 sm:w-5 sm:h-5 ${subject.color}`}
-                          />
-                        </div>
-                        {subject.label}
-                      </label>
-                      <div className="relative w-full max-w-[180px] sm:max-w-[200px]">
-                        <select
-                          id={`score-${subject.id}`}
-                          required
-                          className={`w-full px-2 sm:px-4 py-2 sm:py-3 rounded-xl border-2 font-black text-sm sm:text-lg appearance-none outline-none focus:outline-none focus:ring-4 transition-all cursor-pointer ${subject.bgBorder}`}
-                          value={(formData as any)[subject.id]}
-                          onChange={(e) =>
-                            updateForm(subject.id, e.target.value)
-                          }
-                        >
-                          <option value="" disabled>
-                            -- 選擇等級 --
-                          </option>
-                          {gradeOptions.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronRight className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400 pointer-events-none rotate-90" />
-                      </div>
-                    </div>
-                    {formData.region &&
-                      (formData as any)[subject.id] &&
-                      (() => {
-                        const scoreData = REGION_SCORING_DATA[formData.region];
-                        let scoreText: string | null = null;
-                        const grade = (formData as any)[subject.id];
-
-                        if (scoreData?.examDetail) {
-                          if (["tainan", "hsinchu"].includes(formData.region)) {
-                            if (grade.startsWith("A")) scoreText = "6分";
-                            else if (grade.startsWith("B")) scoreText = "4分";
-                            else if (grade === "C") scoreText = "2分";
-                          } else {
-                            const match = scoreData.examDetail.find(
-                              (d: any) => d.level === grade,
-                            );
-                            if (match) scoreText = match.score;
-                          }
-                        }
-
-                        return scoreText ? (
-                          <div className="flex items-center justify-between mt-1 pt-3.5 border-t-[3px] border-dashed border-slate-200/80 animate-in fade-in slide-in-from-top-2 duration-300">
-                            <span className="text-xs sm:text-sm font-bold text-slate-500 flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
-                              就學區換算積分
-                            </span>
-                            <span className="shrink-0 text-base font-black tracking-tight text-slate-900 sm:text-lg">
-                              {scoreText}
-                            </span>
-                          </div>
-                        ) : null;
-                      })()}
-                  </div>
-                ))}
-
-                {/* Composition */}
-                <div className="relative group bg-slate-900 border-2 border-slate-900 rounded-2xl p-3 sm:p-4 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:-translate-y-1 hover:shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] transition-all flex flex-col gap-3">
-                  <div className="flex items-center justify-between gap-2 sm:gap-4">
-                    <label
-                      htmlFor="score-composition"
-                      className="text-base sm:text-lg font-black text-slate-100 flex items-center gap-3 shrink-0"
-                    >
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl border-2 border-amber-400/50 flex items-center justify-center shrink-0 bg-slate-800">
-                        <PenTool className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
-                      </div>
-                      寫作
-                    </label>
-                    <div className="relative w-full max-w-[180px] sm:max-w-[200px]">
-                      <select
-                        id="score-composition"
-                        required
-                        className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-xl border-2 border-slate-700 bg-slate-800 text-amber-400 font-black text-sm sm:text-lg appearance-none outline-none focus:outline-none focus:ring-4 focus:ring-amber-400/50 hover:border-amber-500/50 transition-all cursor-pointer"
-                        value={formData.composition}
-                        onChange={(e) =>
-                          updateForm("composition", e.target.value)
-                        }
-                      >
-                        <option value="" disabled>
-                          -- 選擇級分 --
-                        </option>
-                        {[6, 5, 4, 3, 2, 1, 0].map((s) => (
-                          <option key={s} value={s}>
-                            {s} 級分
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronRight className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-amber-500/50 pointer-events-none rotate-90" />
-                    </div>
-                  </div>
-                  {formData.region &&
-                    formData.composition &&
-                    (() => {
-                      let compScore: string | null = null;
-                      const comp = parseInt(formData.composition, 10);
-                      switch (formData.region) {
-                        case "taipei":
-                          if (comp === 6) compScore = "1分";
-                          else if (comp === 5) compScore = "0.8分";
-                          else if (comp === 4) compScore = "0.6分";
-                          else if (comp === 3) compScore = "0.4分";
-                          else if (comp === 2) compScore = "0.2分";
-                          else if (comp === 1) compScore = "0.1分";
-                          else compScore = "0分";
-                          break;
-                        case "taoyuan":
-                          if (comp >= 4) compScore = "3分";
-                          else if (comp >= 2) compScore = "2分";
-                          else if (comp === 1) compScore = "1分";
-                          else compScore = "0分";
-                          break;
-                        case "central":
-                          compScore = `${comp}點`;
-                          break;
-                        case "kaohsiung":
-                          compScore = `${comp}級分 (優先比序)`;
-                          break;
-                        case "chiayi":
-                          if (comp >= 5) compScore = "2分";
-                          else if (comp >= 3) compScore = "1.5分";
-                          else if (comp >= 1) compScore = "1分";
-                          else compScore = "0分";
-                          break;
-                        default:
-                          compScore = "同分比序用";
-                          break;
-                      }
-
-                      return compScore ? (
-                        <div className="flex items-center justify-between mt-1 pt-3.5 border-t-[3px] border-dashed border-slate-700 animate-in fade-in slide-in-from-top-2 duration-300">
-                          <span className="text-xs sm:text-sm font-bold text-slate-400 flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                            就學區換算積分
-                          </span>
-                          <span className="shrink-0 text-base font-black tracking-tight text-amber-400 sm:text-lg">
-                            {compScore}
-                          </span>
-                        </div>
-                      ) : null;
-                    })()}
-                </div>
-              </div>
-            </motion.section>
+            <ExamScores
+              region={formData.region}
+              scoresRef={scoresRef}
+              settersRef={scoreSettersRef}
+              savedScoreRecords={savedScoreRecords}
+              isScoreAccountLoggedIn={isScoreAccountLoggedIn}
+              onImportClick={() => setActiveModal("savedScoreImport")}
+              onLogin={loginForSavedScores}
+            />
           </div>
         </div>
       </main>
@@ -2575,532 +2283,6 @@ export default function App() {
         {activeModal === "rating" && (
           <RatingModal isOpen onClose={() => setActiveModal(null)} />
         )}
-
-        {isNavMenuOpen && (
-          <NavigationDrawer
-            isOpen
-            onClose={() => setIsNavMenuOpen(false)}
-            setActiveModal={setActiveModal}
-          />
-        )}
-
-        {/* Navigation Drawer */}
-        <AnimatePresence>
-          {false && isNavMenuOpen && (
-            <>
-              {/* Backdrop */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setIsNavMenuOpen(false)}
-                className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100]"
-              />
-              {/* Drawer */}
-              <motion.div
-                initial={{ x: "100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "100%" }}
-                transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="fixed top-0 right-0 h-full w-[380px] max-w-full border-l-4 border-slate-900 bg-slate-50 shadow-[-8px_0px_0px_0px_rgba(15,23,42,0.1)] z-[110] flex flex-col overflow-hidden"
-              >
-                <div className="p-5 bg-amber-400 border-b-4 border-slate-900 flex items-center justify-between shrink-0">
-                  <div className="flex items-center gap-3">
-                    <Menu className="w-6 h-6 text-slate-900" />
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                      主選單
-                    </h2>
-                  </div>
-                  <button
-                    onClick={() => setIsNavMenuOpen(false)}
-                    className="w-10 h-10 bg-white flex items-center justify-center border-4 border-slate-900 rounded-xl hover:bg-slate-100 transition shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] active:translate-y-1 active:shadow-none"
-                  >
-                    <X className="w-6 h-6 text-slate-900" />
-                  </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
-                  {/* 學校與科系探索 */}
-                  <div className="bg-white rounded-2xl border-4 border-slate-900 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] overflow-hidden">
-                    <button
-                      onClick={() =>
-                        setExpandedNavCategory((prev) =>
-                          prev === "schoolDetails" ? null : "schoolDetails",
-                        )
-                      }
-                      className="w-full flex items-center justify-between p-4 bg-sky-50 outline-none hover:bg-sky-100 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-sky-200 border-2 border-slate-900 rounded-xl shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]">
-                          <Compass className="w-5 h-5 text-sky-700" />
-                        </div>
-                        <span className="font-black text-slate-900 text-lg">
-                          學校與科系探索
-                        </span>
-                      </div>
-                      <ChevronDown
-                        className={`w-5 h-5 text-slate-900 transition-transform ${expandedNavCategory === "schoolDetails" ? "rotate-180" : ""}`}
-                      />
-                    </button>
-                    <AnimatePresence>
-                      {expandedNavCategory === "schoolDetails" && (
-                        <motion.div
-                          initial={{ height: 0 }}
-                          animate={{ height: "auto" }}
-                          exit={{ height: 0 }}
-                          className="overflow-hidden border-t-4 border-slate-900 bg-white"
-                        >
-                          <div className="p-3 flex flex-col gap-2">
-                            <button
-                              onClick={() => {
-                                window.location.href = withBasePath("/holland");
-                              }}
-                              className="w-full text-left px-4 py-3.5 rounded-xl border-2 border-transparent hover:border-slate-900 hover:bg-slate-50 flex items-center justify-between group active:scale-95 transition-all"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="p-1.5 bg-purple-100 border-2 border-slate-900 rounded-lg">
-                                  <Brain className="w-5 h-5 text-purple-600" />
-                                </div>
-                                <span className="font-bold text-slate-900">
-                                  荷倫碼性向測驗
-                                </span>
-                              </div>
-                              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-900 group-hover:translate-x-1 transition-all" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                window.location.href = withBasePath(
-                                  "/vocational-encyclopedia",
-                                );
-                              }}
-                              className="w-full text-left px-4 py-3.5 rounded-xl border-2 border-transparent hover:border-slate-900 hover:bg-slate-50 flex items-center justify-between group active:scale-95 transition-all"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="p-1.5 bg-emerald-100 border-2 border-slate-900 rounded-lg">
-                                  <BookOpen className="w-5 h-5 text-emerald-600" />
-                                </div>
-                                <span className="font-bold text-slate-900">
-                                  職群科系百科
-                                </span>
-                              </div>
-                              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-900 group-hover:translate-x-1 transition-all" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                window.location.href =
-                                  withBasePath("/school-types");
-                              }}
-                              className="w-full text-left px-4 py-3.5 rounded-xl border-2 border-transparent hover:border-slate-900 hover:bg-slate-50 flex items-center justify-between group active:scale-95 transition-all"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="p-1.5 bg-sky-100 border-2 border-slate-900 rounded-lg">
-                                  <Building2 className="w-5 h-5 text-sky-600" />
-                                </div>
-                                <span className="font-bold text-slate-900">
-                                  學校類型解析
-                                </span>
-                              </div>
-                              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-900 group-hover:translate-x-1 transition-all" />
-                            </button>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
-                  {/* 志願選填與落點 */}
-                  <div className="bg-white rounded-2xl border-4 border-slate-900 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] overflow-hidden">
-                    <button
-                      onClick={() =>
-                        setExpandedNavCategory((prev) =>
-                          prev === "strategy" ? null : "strategy",
-                        )
-                      }
-                      className="w-full flex items-center justify-between p-4 bg-amber-50 outline-none hover:bg-amber-100 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-amber-200 border-2 border-slate-900 rounded-xl shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]">
-                          <Target className="w-5 h-5 text-amber-700" />
-                        </div>
-                        <span className="font-black text-slate-900 text-lg">
-                          志願選填與落點
-                        </span>
-                      </div>
-                      <ChevronDown
-                        className={`w-5 h-5 text-slate-900 transition-transform ${expandedNavCategory === "strategy" ? "rotate-180" : ""}`}
-                      />
-                    </button>
-                    <AnimatePresence>
-                      {expandedNavCategory === "strategy" && (
-                        <motion.div
-                          initial={{ height: 0 }}
-                          animate={{ height: "auto" }}
-                          exit={{ height: 0 }}
-                          className="overflow-hidden border-t-4 border-slate-900 bg-white"
-                        >
-                          <div className="p-3 flex flex-col gap-2">
-                            {[
-                              {
-                                id: "mockVolunteer",
-                                icon: Target,
-                                label: "模擬志願選填",
-                                color: "text-sky-600",
-                                bg: "bg-sky-100",
-                              },
-                              {
-                                id: "strategy",
-                                icon: Target,
-                                label: "志願選填攻略",
-                                color: "text-amber-600",
-                                bg: "bg-amber-100",
-                              },
-                              {
-                                id: "gradeLevel",
-                                icon: Award,
-                                label: "等級對照表",
-                                color: "text-rose-600",
-                                bg: "bg-rose-100",
-                              },
-                              {
-                                id: "historicalStats",
-                                icon: ChartBar,
-                                label: "歷年會考統計",
-                                color: "text-indigo-600",
-                                bg: "bg-indigo-100",
-                              },
-                              {
-                                id: "importantDates",
-                                icon: Map,
-                                label: "重要日程",
-                                color: "text-purple-600",
-                                bg: "bg-purple-100",
-                              },
-                              {
-                                id: "disclaimer",
-                                icon: Shield,
-                                label: "免責聲明",
-                                color: "text-slate-600",
-                                bg: "bg-slate-100",
-                              },
-                            ].map((btn) => (
-                              <button
-                                key={btn.id}
-                                onClick={() => {
-                                  if (
-                                    btn.id === "privacy" ||
-                                    btn.id === "terms" ||
-                                    btn.id === "changelog" ||
-                                    btn.id === "advantages" ||
-                                    btn.id === "instructions" ||
-                                    btn.id === "historicalStats" ||
-                                    btn.id === "gradeLevel" ||
-                                    btn.id === "mockVolunteer" ||
-                                    btn.id === "importantDates" ||
-                                    btn.id === "strategy"
-                                  ) {
-                                    window.location.href = withBasePath(
-                                      btn.id === "historicalStats"
-                                        ? "/historical-stats"
-                                        : btn.id === "gradeLevel"
-                                          ? "/grade-level"
-                                          : btn.id === "mockVolunteer"
-                                            ? "/mock-volunteer"
-                                            : btn.id === "importantDates"
-                                              ? "/important-dates"
-                                              : `/${btn.id}`,
-                                    );
-                                    return;
-                                  }
-                                  setActiveModal(btn.id as any);
-                                  setIsNavMenuOpen(false);
-                                }}
-                                className="w-full text-left px-4 py-3.5 rounded-xl border-2 border-transparent hover:border-slate-900 hover:bg-slate-50 flex items-center justify-between group active:scale-95 transition-all"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div
-                                    className={`p-1.5 rounded-lg border-2 border-slate-900 ${btn.bg}`}
-                                  >
-                                    <btn.icon
-                                      className={`w-5 h-5 ${btn.color}`}
-                                    />
-                                  </div>
-                                  <span className="font-bold text-slate-900">
-                                    {btn.label}
-                                  </span>
-                                </div>
-                                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-900 group-hover:translate-x-1 transition-all" />
-                              </button>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
-                  {/* 系統指南與回饋 */}
-                  <div className="bg-white rounded-2xl border-4 border-slate-900 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] overflow-hidden">
-                    <button
-                      onClick={() =>
-                        setExpandedNavCategory((prev) =>
-                          prev === "systemGuide" ? null : "systemGuide",
-                        )
-                      }
-                      className="w-full flex items-center justify-between p-4 bg-indigo-50 outline-none hover:bg-indigo-100 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-200 border-2 border-slate-900 rounded-xl shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]">
-                          <Sparkles className="w-5 h-5 text-indigo-700" />
-                        </div>
-                        <span className="font-black text-slate-900 text-lg">
-                          系統指南與回饋
-                        </span>
-                      </div>
-                      <ChevronDown
-                        className={`w-5 h-5 text-slate-900 transition-transform ${expandedNavCategory === "systemGuide" ? "rotate-180" : ""}`}
-                      />
-                    </button>
-                    <AnimatePresence>
-                      {expandedNavCategory === "systemGuide" && (
-                        <motion.div
-                          initial={{ height: 0 }}
-                          animate={{ height: "auto" }}
-                          exit={{ height: 0 }}
-                          className="overflow-hidden border-t-4 border-slate-900 bg-white"
-                        >
-                          <div className="p-3 flex flex-col gap-2">
-                            {[
-                              {
-                                id: "instructions",
-                                icon: Info,
-                                label: "使用說明",
-                                color: "text-blue-600",
-                                bg: "bg-blue-100",
-                              },
-                              {
-                                id: "advantages",
-                                icon: Sparkles,
-                                label: "系統優點與關於我們",
-                                color: "text-indigo-600",
-                                bg: "bg-indigo-100",
-                              },
-                              {
-                                id: "site-map",
-                                icon: Map,
-                                label: "網站地圖",
-                                color: "text-amber-600",
-                                bg: "bg-amber-100",
-                              },
-                              {
-                                id: "rating",
-                                icon: StarIcon,
-                                label: "評分系統",
-                                color: "text-amber-500",
-                                bg: "bg-amber-100",
-                              },
-                              {
-                                id: "changelog",
-                                icon: History,
-                                label: "更新日誌",
-                                color: "text-slate-500",
-                                bg: "bg-slate-100",
-                              },
-                              {
-                                id: "privacy",
-                                icon: Database,
-                                label: "隱私權政策",
-                                color: "text-emerald-600",
-                                bg: "bg-emerald-100",
-                              },
-                              {
-                                id: "terms",
-                                icon: Shield,
-                                label: "服務條款",
-                                color: "text-slate-600",
-                                bg: "bg-slate-100",
-                              },
-                              {
-                                id: "reportError",
-                                icon: AlertCircle,
-                                label: "錯誤回報",
-                                color: "text-red-500",
-                                bg: "bg-red-100",
-                              },
-                            ].map((btn) => (
-                              <button
-                                key={btn.id}
-                                onClick={() => {
-                                  if (
-                                    btn.id === "privacy" ||
-                                    btn.id === "terms" ||
-                                    btn.id === "changelog" ||
-                                    btn.id === "advantages" ||
-                                    btn.id === "instructions" ||
-                                    btn.id === "site-map"
-                                  ) {
-                                    window.location.href = withBasePath(
-                                      `/${btn.id}`,
-                                    );
-                                    return;
-                                  }
-                                  setActiveModal(btn.id as any);
-                                  setIsNavMenuOpen(false);
-                                }}
-                                className="w-full text-left px-4 py-3.5 rounded-xl border-2 border-transparent hover:border-slate-900 hover:bg-slate-50 flex items-center justify-between group active:scale-95 transition-all"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div
-                                    className={`p-1.5 rounded-lg border-2 border-slate-900 ${btn.bg}`}
-                                  >
-                                    <btn.icon
-                                      className={`w-5 h-5 ${btn.color}`}
-                                    />
-                                  </div>
-                                  <span className="font-bold text-slate-900">
-                                    {btn.label}
-                                  </span>
-                                </div>
-                                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-900 group-hover:translate-x-1 transition-all" />
-                              </button>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
-                  {/* 外部資源 */}
-                  <div className="bg-white rounded-2xl border-4 border-slate-900 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] overflow-hidden">
-                    <button
-                      onClick={() =>
-                        setExpandedNavCategory((prev) =>
-                          prev === "externalLinks" ? null : "externalLinks",
-                        )
-                      }
-                      className="w-full flex items-center justify-between p-4 bg-emerald-50 outline-none hover:bg-emerald-100 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-emerald-200 border-2 border-slate-900 rounded-xl shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]">
-                          <LinkIcon className="w-5 h-5 text-emerald-700" />
-                        </div>
-                        <span className="font-black text-slate-900 text-lg">
-                          外部資源與分享
-                        </span>
-                      </div>
-                      <ChevronDown
-                        className={`w-5 h-5 text-slate-900 transition-transform ${expandedNavCategory === "externalLinks" ? "rotate-180" : ""}`}
-                      />
-                    </button>
-                    <AnimatePresence>
-                      {expandedNavCategory === "externalLinks" && (
-                        <motion.div
-                          initial={{ height: 0 }}
-                          animate={{ height: "auto" }}
-                          exit={{ height: 0 }}
-                          className="overflow-hidden border-t-4 border-slate-900 bg-white"
-                        >
-                          <div className="p-3 flex flex-col gap-2">
-                            {[
-                              {
-                                type: "route",
-                                href: "/score-inquiry",
-                                icon: Search,
-                                label: "會考成績查詢",
-                                color: "text-fuchsia-600",
-                                bg: "bg-fuchsia-100",
-                              },
-                              {
-                                type: "link",
-                                href: "https://tyctw.github.io/volunteer/",
-                                icon: ChartBar,
-                                label: "序位查詢",
-                                color: "text-orange-600",
-                                bg: "bg-orange-100",
-                              },
-                              {
-                                type: "link",
-                                href: "https://tyctw.github.io/shared/",
-                                icon: Library,
-                                label: "全國錄取分享",
-                                color: "text-indigo-600",
-                                bg: "bg-indigo-100",
-                              },
-                              {
-                                type: "link",
-                                href: "https://tyctw.github.io/score/",
-                                icon: List,
-                                label: "全國序位分享",
-                                color: "text-emerald-600",
-                                bg: "bg-emerald-100",
-                              },
-                            ].map((link) =>
-                                <a
-                                  key={link.label}
-                                  href={link.type === 'route' ? withBasePath(link.href) : link.href}
-                                  target={link.type === 'link' ? '_blank' : undefined}
-                                  rel={link.type === 'link' ? 'noopener noreferrer' : undefined}
-                                  className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl border-2 border-transparent hover:border-slate-900 hover:bg-slate-50 group active:scale-95 transition-all"
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <div
-                                      className={`p-1.5 rounded-lg border-2 border-slate-900 ${link.bg}`}
-                                    >
-                                      <link.icon
-                                        className={`w-4 h-4 ${link.color}`}
-                                      />
-                                    </div>
-                                    <span className="font-bold text-slate-900">
-                                      {link.label}
-                                    </span>
-                                  </div>
-                                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-slate-900 -rotate-45 group-hover:rotate-0 transition-transform" />
-                                </a>,
-                            )}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
-                  <div className="bg-white rounded-2xl border-4 border-slate-900 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] p-4 flex justify-center gap-4">
-                    <a
-                      href="https://www.instagram.com/exam.tw/"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-2 group outline-none"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-pink-50 border-2 border-slate-900 flex items-center justify-center group-hover:bg-pink-100 group-hover:scale-110 active:scale-95 transition-all text-pink-600 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] group-hover:shadow-[4px_4px_0px_0px_rgba(15,23,42,1)]">
-                        <Instagram className="w-5 h-5 group-hover:-rotate-6 transition-transform group-hover:rotate-0" />
-                      </div>
-                      <span className="font-bold text-slate-700 text-sm">
-                        Instagram
-                      </span>
-                    </a>
-                    <div className="w-0.5 h-10 bg-slate-200 rounded-full mx-2"></div>
-                    <a
-                      href="https://www.threads.com/@exam.tw"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-2 group outline-none"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-slate-50 border-2 border-slate-900 flex items-center justify-center group-hover:bg-slate-100 group-hover:scale-110 active:scale-95 transition-all text-slate-700 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] group-hover:shadow-[4px_4px_0px_0px_rgba(15,23,42,1)]">
-                        <AtSign className="w-5 h-5 group-hover:rotate-6 transition-transform group-hover:rotate-0" />
-                      </div>
-                      <span className="font-bold text-slate-700 text-sm">
-                        Threads
-                      </span>
-                    </a>
-                  </div>
-                </div>
-                <div className="p-4 bg-slate-900 border-t-4 border-slate-900 text-center">
-                  <p className="text-slate-400 font-bold text-xs flex items-center justify-center gap-1">
-                    <Check className="w-3 h-3 text-emerald-400" />
-                    會考落點分析系統 v6.0
-                  </p>
-                </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
 
         {activeModal === "authFail" && (
           <AuthFailModal isOpen onClose={() => setActiveModal(null)} />
