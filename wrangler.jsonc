@@ -6,6 +6,13 @@
   "vars": {
     "SUPABASE_URL": "https://ujltpbzlspbustqjqnar.supabase.co"
   },
+  // Preview deployments do not inherit vars. This is the same public Supabase
+  // project URL already used in production, not a secret.
+  "previews": {
+    "vars": {
+      "SUPABASE_URL": "https://ujltpbzlspbustqjqnar.supabase.co"
+    }
+  },
   "compatibility_date": "2026-10-17",
   "build": {
     "command": "npm run build"
